@@ -1236,7 +1236,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 
   <!-- ========== 01 ОФФЕР ========== -->
   <section class="hero" id="hero" data-idx="01 / ОФФЕР" data-theme="light">
-    <div class="orb rv d2" id="heroOrb" data-speed="0.94" data-lag="0.08" aria-hidden="true">
+    <!-- data-lag снят намеренно: с ним слой догоняет прокрутку и после
+       остановки продолжает ползти — планета «уезжает». Параллакс оставлен. -->
+    <div class="orb rv d2" id="heroOrb" data-speed="0.94" aria-hidden="true">
       <div class="orb__stage">
         <div class="orb__glow"></div>
         <div class="orb__ring orb__ring--back"></div>
@@ -2605,6 +2607,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     canvas.width = W; canvas.height = H;
     canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
     gl.viewport(0, 0, W, H);
+    /* Смена размера очищает холст. Если ждать следующего кадра, зритель видит
+       пустоту — это и есть мигание. Рисуем тут же, синхронно. */
+    if(!first) paint();
   }
 
   /* Геометрия диска повторяет CSS-версию один в один, чтобы при переключении
@@ -2626,7 +2631,10 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     return [cw - 0.10 * S, ch - 0.26 * S, 0.34 * S];
   }
 
-  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  /* Часы планеты идут только пока она в кадре. Иначе за время прокрутки
+     страницы `uT` убегает, и при возврате облака, бури и луны оказываются
+     совсем в другом месте — читается как рывок. */
+  var clock = 0, lastNow = 0;
   var raf = 0, visible = true, last = -1e9, first = true;
   var MIN_DT = 1000 / 30;                 /* планета медленная, тридцати хватает */
 
@@ -2635,7 +2643,16 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
      заголовок перестаёт выезжать, прокрутка дёргается. Поэтому меряем время
      кадра и опускаем разрешение, пока не уложимся. Планета мягкая, потерю
      резкости на ней не видно. */
-  var acc = 0, accN = 0, giveUp = 0, pace = 0, paceN = 0, lastDrawn = 0;
+  var acc = 0, accN = 0, giveUp = 0, pace = 0, paceN = 0, lastDrawn = 0, steps = 0;
+  function paint(){
+    var s = sphere();
+    gl.uniform2f(uRes, W, H);
+    gl.uniform3f(uSph, s[0] * (W / cw), s[1] * (H / ch), s[2] * (W / cw));
+    gl.uniform1f(uT, clock);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
   function bail(){
     /* Машина не тянет даже на минимальном разрешении. Это не повод показывать
        слайд-шоу: снимаем холст и возвращаем градиентную планету — она стоит
@@ -2669,8 +2686,13 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
        кадров в секунду, до него вмешиваться незачем. */
     var slow = paceN > 6 && (pace / paceN) > 60;
     pace = 0; paceN = 0;
-    if((avg > 12 || slow) && SCALE > 0.24){ SCALE = Math.max(0.24, SCALE * 0.75); layout(); }
-    else if(avg < 3 && !slow && SCALE < TARGET){ SCALE = Math.min(TARGET, SCALE * 1.12); layout(); }
+    /* Шагов немного и только вниз-вверх с запасом: качели по разрешению
+       заметнее, чем сама нехватка кадров. */
+    if((avg > 12 || slow) && SCALE > 0.24 && steps < 5){
+      SCALE = Math.max(0.24, SCALE * 0.75); steps++; layout();
+    } else if(avg < 3 && !slow && SCALE < TARGET * 0.98 && steps < 5){
+      SCALE = Math.min(TARGET, SCALE * 1.12); steps++; layout();
+    }
   }
 
   function frame(now){
@@ -2681,12 +2703,14 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     lastDrawn = now;
     last = now;
     var t1 = (window.performance && performance.now) ? performance.now() : now;
-    var s = sphere();
-    gl.uniform2f(uRes, W, H);
-    gl.uniform3f(uSph, s[0] * (W / cw), s[1] * (H / ch), s[2] * (W / cw));
-    gl.uniform1f(uT, (now - t0) / 1000);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if(lastNow){
+      var dt = now - lastNow;
+      /* большой разрыв — это возврат из-за кадра или из фоновой вкладки:
+         время не наверстываем, иначе картинка дёргается */
+      clock += (dt > 200 ? 33 : dt) / 1000;
+    }
+    lastNow = now;
+    paint();
     gl.flush();
     adapt(((window.performance && performance.now) ? performance.now() : t1) - t1);
     if(first){ first = false; host.classList.add('orb--gl'); canvas.style.opacity = '1'; }
@@ -2719,25 +2743,18 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   if(hero && window.IntersectionObserver){
     new IntersectionObserver(function(es){
       visible = es[0].isIntersecting;
-      if(visible){ last = -1e9; kick(); }
+      if(visible){ last = -1e9; lastNow = 0; kick(); }
     }, {rootMargin:'8% 0px'}).observe(hero);
   }
   document.addEventListener('visibilitychange', function(){
-    if(!document.hidden){ last = -1e9; kick(); }
+    if(!document.hidden){ last = -1e9; lastNow = 0; kick(); }
   });
 
   /* Отладочная ручка в духе xplScene: разрешение, состояние и синхронный
      замер стоимости кадра. Замер нужен именно синхронный — в фоновой вкладке
      requestAnimationFrame не тикает, и по нему машину не оценишь. */
   window.orbGl = {
-    draw: function(){
-      var s = sphere();
-      gl.uniform2f(uRes, W, H);
-      gl.uniform3f(uSph, s[0] * (W / cw), s[1] * (H / ch), s[2] * (W / cw));
-      gl.uniform1f(uT, ((window.performance ? performance.now() : Date.now()) - t0) / 1000);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    },
+    draw: paint,
     bench: function(n){
       n = n || 12;
       this.draw(); gl.finish();
@@ -2756,7 +2773,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   });
 })();
 </script>
-<script defer src="novikov-gl.js"></script>
+<script defer src="novikov-gl.js?v=058103ed"></script>
 
 </body>
 </html>

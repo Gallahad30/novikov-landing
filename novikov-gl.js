@@ -121,6 +121,9 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     key.shadow.bias = -0.0016; key.shadow.normalBias = 0.02;
     key.shadow.radius = 3;
     var rim = new THREE.DirectionalLight(0x9fd8f2, 0.85); rim.position.set(-7,2,-6); scene.add(rim);
+    /* Второй контровой, с другой стороны: без него правые рёбра модулей
+       сливаются с фоном и стопка читается силуэтом, а не набором деталей. */
+    var rim2 = new THREE.DirectionalLight(0x7FC4E8, 0.5); rim2.position.set(6,-3,-7); scene.add(rim2);
     /* подсветка со стороны камеры: без неё передние грани уходят в чёрное */
     var fill = new THREE.DirectionalLight(0xBFD9EE, 0.75); fill.position.set(7,4,9); scene.add(fill);
     scene.add(new THREE.AmbientLight(0x88a8bb, .45));
@@ -585,9 +588,92 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
         m.g.userData.order = dist * 2 + (i < items.length / 2 ? 0 : 1);
         m.g.userData.halfH = Math.max(m.top, m.bot);
         m.g.userData.radXZ = m.rad;
+        /* размер коробки запоминаем здесь: считать Box3 каждый кадр дорого,
+           а рамке выделения нужен размер, а не геометрия */
+        m.g.userData.boxY = m.top + m.bot;
+        m.g.userData.boxC = (m.top - m.bot) / 2;
+        m.g.userData.isTop = (i === 0);
         cursor = m.g.userData.dy - m.bot - SLOT_GAP;
       }
     }
+
+    /* ================= эффекты ================= */
+
+    function glowSprite(hex){
+      var s = 64, cv = document.createElement('canvas');
+      cv.width = cv.height = s;
+      var g2 = cv.getContext('2d').createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+      g2.addColorStop(0,   'rgba(255,255,255,1)');
+      g2.addColorStop(0.25,'rgba(255,255,255,.75)');
+      g2.addColorStop(1,   'rgba(255,255,255,0)');
+      var cx = cv.getContext('2d');
+      cx.fillStyle = g2; cx.fillRect(0, 0, s, s);
+      var t = new THREE.CanvasTexture(cv);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.SpriteMaterial({map:t, color:hex, transparent:true,
+        depthWrite:false, blending:THREE.AdditiveBlending});
+    }
+
+    /* Шлейф. Аддитивное смешение делает чёрный невидимым, поэтому прозрачность
+       хвоста задаём цветом вершины: голова яркая, хвост чёрный. */
+    var FX_MAX = 8;
+    var trailPos = new Float32Array(FX_MAX * 2 * 3);
+    var trailCol = new Float32Array(FX_MAX * 2 * 3);
+    var trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+    trailGeo.setAttribute('color',    new THREE.BufferAttribute(trailCol, 3));
+    var trails = new THREE.LineSegments(trailGeo, new THREE.LineBasicMaterial({
+      vertexColors:true, transparent:true, depthWrite:false,
+      blending:THREE.AdditiveBlending
+    }));
+    trails.frustumCulled = false;
+    root.add(trails);
+
+    /* Мелкий сор вокруг спутника: всплывает на разлёте и расходится наружу.
+       Точки стоят на месте, наружу их разводит масштаб группы — так дешевле,
+       чем трогать буфер каждый кадр. */
+    var dust = new THREE.Group();
+    (function(){
+      var N = small ? 90 : 220, pos = new Float32Array(N * 3);
+      for(var i = 0; i < N; i++){
+        var u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2,
+            r = 2.2 + Math.random() * 3.4, s = Math.sqrt(1 - u * u);
+        pos[i*3]   = Math.cos(th) * s * r;
+        pos[i*3+1] = u * r * 1.35;
+        pos[i*3+2] = Math.sin(th) * s * r;
+      }
+      var g2 = new THREE.BufferGeometry();
+      g2.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      dust.add(new THREE.Points(g2, new THREE.PointsMaterial({
+        color:0xBFE4F7, size:small ? 0.05 : 0.038, sizeAttenuation:true,
+        transparent:true, opacity:0, depthWrite:false,
+        blending:THREE.AdditiveBlending
+      })));
+    })();
+    root.add(dust);
+
+    /* Проблесковый маяк на верхнем модуле: одна мигающая точка оживляет
+       всю сцену сильнее, чем ещё сто деталей на корпусе. */
+    var beacon = new THREE.Group();
+    var bLamp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.032, 10, 8),
+      new THREE.MeshBasicMaterial({color:0xFF7A55})
+    );
+    var bGlow = new THREE.Sprite(glowSprite(0xFF8A62));
+    bGlow.scale.setScalar(0.42);
+    beacon.add(bLamp); beacon.add(bGlow);
+    beacon.visible = false;
+    root.add(beacon);
+
+    /* Рамка выделения: появляется вокруг модуля, на который навели слой. */
+    var selBox = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+      new THREE.LineBasicMaterial({color:0x63CDF2, transparent:true, opacity:0,
+        depthWrite:false})
+    );
+    selBox.visible = false;
+    root.add(selBox);
+    var selOp = 0;
 
     var progress = 0, active = -1, spin = 0, visible = false, raf = 0;
     var offX = small ? 0 : 1.5;
@@ -621,16 +707,88 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     var vFwd = new THREE.Vector3(), vRight = new THREE.Vector3(), vUp = new THREE.Vector3();
 
     function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
-    /* лёгкий перехлёст: модуль проскакивает своё место и возвращается —
-       движение читается как выемка, а не как линейный сдвиг */
-    function easeOutBack(t){
-      var s = 0.62, u = t - 1;
-      return 1 + (s + 1) * u * u * u + s * u * u;
+    /* Затухающая пружина: модуль проскакивает своё место, качается и встаёт.
+       Считается аналитически, поэтому одинаково ведёт себя и при прокрутке
+       вперёд, и при прокрутке назад, и при покадровой съёмке.
+       Остаточную ошибку на конце (косинус в единице не ноль) снимаем линейно,
+       иначе модуль замирает в паре сотых от слота. */
+    var SPRING_D = 7.2, SPRING_W = 12.6;
+    var SPRING_END = 1 - Math.exp(-SPRING_D) * Math.cos(SPRING_W);
+    function easeOutSpring(t){
+      if(t <= 0) return 0;
+      if(t >= 1) return 1;
+      var v = 1 - Math.exp(-SPRING_D * t) * Math.cos(SPRING_W * t);
+      return v - (SPRING_END - 1) * t;
     }
     function easeInOutCubic(t){
       return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2;
     }
     function clamp01(v){ return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+    /* Эффекты пересчитываем после модулей: им нужны свежие положения. */
+    function updateFx(){
+      var i, g, v, c = 0;
+
+      /* шлейфы */
+      for(i = 0; i < modules.length && i < FX_MAX; i++){
+        g = modules[i];
+        v = g.userData.vel || 0;
+        var dir = (g.userData.dy - g.userData.y0) >= 0 ? -1 : 1;   /* хвост позади */
+        var len = v * 1.5;
+        var o = i * 6;
+        trailPos[o]   = g.position.x; trailPos[o+1] = g.position.y;            trailPos[o+2] = 0;
+        trailPos[o+3] = g.position.x; trailPos[o+4] = g.position.y + dir * len; trailPos[o+5] = 0;
+        var b = v * 1.15;
+        trailCol[o]   = b * 0.55; trailCol[o+1] = b * 0.82; trailCol[o+2] = b;
+        trailCol[o+3] = 0;        trailCol[o+4] = 0;        trailCol[o+5] = 0;
+        c++;
+      }
+      for(i = c; i < FX_MAX; i++){
+        var z = i * 6;
+        trailPos[z] = trailPos[z+1] = trailPos[z+2] = 0;
+        trailPos[z+3] = trailPos[z+4] = trailPos[z+5] = 0;
+        trailCol[z] = trailCol[z+1] = trailCol[z+2] = 0;
+        trailCol[z+3] = trailCol[z+4] = trailCol[z+5] = 0;
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+      trailGeo.attributes.color.needsUpdate = true;
+
+      /* сор: всплывает к середине разлёта и расходится наружу */
+      var dm = dust.children[0].material;
+      dm.opacity = 0.5 * Math.sin(Math.PI * clamp01(progress)) + 0.16 * progress;
+      dust.scale.setScalar(0.8 + progress * 0.7);
+      dust.rotation.y = spin * 0.5;
+      dust.rotation.x = spin * 0.12;
+
+      /* маяк: садится на верхний модуль и мигает двойной вспышкой */
+      var topMod = null;
+      for(i = 0; i < modules.length; i++) if(modules[i].userData.isTop) topMod = modules[i];
+      if(topMod){
+        beacon.visible = true;
+        beacon.position.set(topMod.position.x + 0.22,
+                            topMod.position.y + (topMod.userData.boxY || 1) * 0.42,
+                            0.22);
+        var ph = (spin * 4.2) % 1;
+        var fl = ph < 0.06 ? 1 : (ph < 0.14 ? 0.25 : (ph < 0.20 ? 0.9 : 0.08));
+        bLamp.material.color.setRGB(1, 0.42 * fl + 0.06, 0.3 * fl + 0.04);
+        bGlow.material.opacity = 0.3 + 0.7 * fl;
+        bGlow.scale.setScalar(0.4 + 0.4 * fl);
+      } else {
+        beacon.visible = false;
+      }
+
+      /* рамка выделения */
+      var want = active >= 0 && active < modules.length ? 0.72 : 0;
+      selOp += (want - selOp) * 0.16;
+      selBox.visible = selOp > 0.01;
+      if(selBox.visible){
+        var a = modules[active >= 0 ? active : 0];
+        var r = (a.userData.radXZ || 1.4) * 2.06;
+        selBox.scale.set(r, (a.userData.boxY || 1) * 1.08, r);
+        selBox.position.set(a.position.x, a.position.y + (a.userData.boxC || 0), 0);
+        selBox.material.opacity = selOp;
+      }
+    }
 
     function frame(){
       raf = 0;
@@ -646,24 +804,40 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
         var ord = g.userData.order === undefined ? n : g.userData.order;
         var t0 = (ord / Math.max(1, modules.length - 1)) * (1 - STAGGER);
         var raw = clamp01((progress - t0) / STAGGER);
-        var en = easeOutBack(raw);
-        var y0 = g.userData.y0;
-        g.position.y = y0 + (g.userData.dy - y0) * en;
+        var en = easeOutSpring(raw);
+        var y0 = g.userData.y0, dy = g.userData.dy;
+        g.position.y = y0 + (dy - y0) * en;
+
+        /* Холостое покачивание: пока модуль в стопке — стоит намертво,
+           отделившись — чуть дышит. Ведём от spin, а не от часов, чтобы
+           покадровая съёмка оставалась воспроизводимой. */
+        var life = clamp01(raw * 1.6 - 0.4);
+        g.position.y += Math.sin(spin * 2.3 + ord * 1.7) * 0.03 * life;
+
         /* доворот идёт быстрее сдвига и успевает встать до остановки:
            модуль будто отвинтили, а не вынули лифтом */
         var rot = easeOutCubic(clamp01(raw * 1.25));
-        g.rotation.y = (ord % 2 ? -1 : 1) * 0.26 * rot;
-        g.rotation.z = (ord % 2 ? 1 : -1) * 0.05 * rot;
+        g.rotation.y = (ord % 2 ? -1 : 1) * 0.26 * rot
+                     + Math.sin(spin * 1.6 + ord * 2.3) * 0.012 * life;
+        g.rotation.z = (ord % 2 ? 1 : -1) * 0.05 * rot
+                     + Math.sin(spin * 1.9 + ord * 1.1) * 0.008 * life;
         g.rotation.x = (ord % 3 === 0 ? 1 : -1) * 0.024 * rot;
 
         var want = (active === n) ? .34 : 0;
         g.position.x += (want - g.position.x) * .12;
+
+        /* Скорость берём аналитически — разностью хода на малом шаге:
+           сцена ведётся прокруткой, времени у неё нет. */
+        var vel = Math.abs((easeOutSpring(clamp01(raw + 0.02)) - en) * (dy - y0)) * 6;
+        g.userData.vel = vel > 1 ? 1 : vel;
 
         var h = g.userData.halfH || 0.5, r = g.userData.radXZ || 1.5;
         yMin = Math.min(yMin, g.position.y - h);
         yMax = Math.max(yMax, g.position.y + h);
         rad  = Math.max(rad, r + Math.abs(g.position.x));
       }
+
+      updateFx();
 
       root.rotation.y = -0.55 + eCam*0.9 + spin;
       root.rotation.x = 0.02 + eCam * 0.05;
@@ -741,6 +915,17 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       hold: function(v){ hold = !!v; },
       loaded: function(){ return modelReady; },
       resize: resize,
+      /* слепок эффектов — для отладки */
+      fx: function(){
+        return {
+          vel: modules.map(function(g){ return +(g.userData.vel||0).toFixed(3); }),
+          isTop: modules.map(function(g){ return !!g.userData.isTop; }),
+          beacon: {vis:beacon.visible, y:+beacon.position.y.toFixed(2),
+                   glow:+bGlow.material.opacity.toFixed(2)},
+          dust: +dust.children[0].material.opacity.toFixed(3),
+          sel: +selOp.toFixed(3)
+        };
+      },
       /* текущие положения — для проверки просветов на всём ходу */
       pos: function(){ return modules.map(function(g){ return {y:+g.position.y.toFixed(4)}; }); },
       /* отладочный слепок габаритов: по нему считаются просветы разлёта */

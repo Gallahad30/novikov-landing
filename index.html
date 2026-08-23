@@ -1420,6 +1420,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   window.addEventListener('load', function(){
     setTimeout(function(){ sweptAt = -1e9; slowTick(); }, 400);
   });
+  /* При prefers-reduced-motion ScrollSmoother не запускается, и тик gsap до
+     досмотра не доходит — вешаемся ещё и на обычный scroll. */
+  window.addEventListener('scroll', slowTick, {passive:true});
 
   /* ---------- точки разделов справа ---------- */
   var sections = [].slice.call(document.querySelectorAll('section[data-idx]'));

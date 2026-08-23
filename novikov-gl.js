@@ -515,18 +515,148 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     planetGrp.rotation.z = 0.30;              /* наклон оси, он же наклон колец */
     scene.add(planetGrp);
 
+    /* ---------- планета разбора ----------
+       Поверхность считает шейдер, а не картинка с canvas: полосы, сдвиговый
+       поток, две палубы, вихрь и лимб. Ось наклонена вместе с группой, шум
+       берётся в системе шара — вращение достаётся даром. */
+    var planetShader = {
+      uniforms: {
+        uSun:   {value: new THREE.Vector3().copy(sunDir)},
+        uSpin:  {value: 0},
+        uTint:  {value: new THREE.Color(0x9fd0e8)}
+      },
+      vertexShader: [
+        'varying vec3 vPos; varying vec3 vN; varying vec3 vW;',
+        'void main(){',
+        '  vPos=position;',
+        '  vN=normalize(normalMatrix*normal);',
+        '  vec4 wp=modelMatrix*vec4(position,1.0); vW=wp.xyz;',
+        '  gl_Position=projectionMatrix*viewMatrix*wp;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'precision highp float;',
+        'uniform vec3 uSun; uniform float uSpin; uniform vec3 uTint;',
+        'varying vec3 vPos; varying vec3 vN; varying vec3 vW;',
+        '/* Симплексный шум Стефана Густавсона (Ashima Arts, MIT). Трёхмерный:',
+        'двумерный дал бы шов по нулевому меридиану. */',
+        'vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}',
+        'vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}',
+        'vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}',
+        'vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}',
+        'float snoise(vec3 v){',
+        'const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);',
+        'vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);',
+        'vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g;',
+        'vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);',
+        'vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+C.yyy; vec3 x3=x0-D.yyy;',
+        'i=mod289(i);',
+        'vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))',
+        '+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));',
+        'float n_=0.142857142857; vec3 ns=n_*D.wyz-D.xzx;',
+        'vec4 j=p-49.0*floor(p*ns.z*ns.z);',
+        'vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);',
+        'vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);',
+        'vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);',
+        'vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));',
+        'vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;',
+        'vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y);',
+        'vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);',
+        'vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));',
+        'p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;',
+        'vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;',
+        'return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));',
+        '}',
+        'float fbm4(vec3 p){ float a=0.5,s=0.0;',
+        'for(int i=0;i<4;i++){ s+=a*snoise(p); p=p*2.03+vec3(11.3,7.7,3.1); a*=0.5; } return s; }',
+        'float fbm3(vec3 p){ float a=0.5,s=0.0;',
+        'for(int i=0;i<3;i++){ s+=a*snoise(p); p=p*2.11+vec3(5.2,1.3,9.4); a*=0.5; } return s; }',
+        'float ridged3(vec3 p){ float a=0.5,s=0.0;',
+        'for(int i=0;i<3;i++){ s+=a*(1.0-abs(snoise(p))); p=p*2.17+vec3(3.7,9.1,5.3); a*=0.5; } return s; }',
+        'void main(){',
+        '  vec3 sp=normalize(vPos);',
+        '  float lt=sp.y;',
+        /* сдвиговый поток: чем ближе к экватору, тем сильнее снос по долготе */
+        '  vec3 tang=normalize(cross(vec3(0.0,1.0,0.0),sp)+vec3(1e-5));',
+        '  vec3 c1=sp+tang*(uSpin*0.30*(1.0-lt*lt));',
+        '  c1*=2.4; c1.y*=7.0;',
+        '  float warp=fbm3(sp*2.6+vec3(0.0,uSpin*0.2,0.0));',
+        '  float deep=fbm4(c1*0.86+warp*0.42);',
+        '  vec3 c2=(sp+tang*(uSpin*0.46*(1.0-lt*lt)))*3.1; c2.y*=7.0;',
+        '  float high=fbm4(c2*0.62+warp*0.66);',
+        '  float fil=ridged3(c1*2.9+warp*0.5);',
+        '  float zl=asin(clamp(lt,-1.0,1.0));',
+        '  float zones=sin(zl*16.0+deep*2.6+warp*1.0);',
+        '  float mixv=clamp(0.5+0.5*zones+0.16*deep,0.0,1.0);',
+        '  float veil=smoothstep(0.02,0.62,high);',
+        /* вихрь */
+        '  vec3 spotDir=normalize(vec3(0.62,0.22,0.75));',
+        '  vec3 sAx=normalize(cross(vec3(0.0,1.0,0.0),spotDir));',
+        '  vec2 sd=vec2(dot(sp,sAx)/0.26,(lt-spotDir.y)/0.10);',
+        '  float sr=length(sd);',
+        '  float spot=smoothstep(1.15,0.15,sr)*step(0.0,dot(sp,spotDir));',
+        '  vec3 deepC=vec3(0.020,0.058,0.104);',
+        '  vec3 midC =vec3(0.080,0.186,0.278);',
+        '  vec3 hiC  =vec3(0.330,0.470,0.560);',
+        '  vec3 base=mix(deepC,midC,smoothstep(0.06,0.58,mixv));',
+        '  base=mix(base,hiC,smoothstep(0.58,1.0,mixv));',
+        '  base=mix(base,mix(base,vec3(0.36,0.50,0.60),0.55),veil*0.42);',
+        '  base*=0.86+0.30*fil*mixv;',
+        '  base=mix(base,vec3(0.70,0.50,0.34),spot*0.62);',
+        '  base=mix(base,vec3(0.34,0.46,0.55),smoothstep(0.74,1.0,abs(lt))*0.40);',
+        '  base*=uTint/vec3(0.62,0.82,0.91);',
+        /* свет */
+        '  vec3 N=normalize(vN);',
+        '  vec3 V=normalize(cameraPosition-vW);',
+        '  float lam=dot(N,normalize(uSun));',
+        '  float day=smoothstep(-0.28,0.42,lam);',
+        '  float rim=1.0-max(dot(N,V),0.0);',
+        '  float limb=pow(max(dot(N,V),0.0),0.42);',
+        '  vec3 col=base*day*mix(0.34,1.0,limb);',
+        '  col+=base*0.05*(1.0-day)*limb;',
+        '  float twil=smoothstep(0.24,0.0,abs(lam))*day;',
+        '  col=mix(col,col*vec3(1.22,0.88,0.68),twil*0.5);',
+        '  col+=vec3(0.17,0.40,0.60)*pow(rim,3.0)*day*0.95;',
+        '  col=col/(col+vec3(0.80))*1.30;',
+        '  gl_FragColor=vec4(col,1.0);',
+        '}'
+      ].join('\n')
+    };
+
     var planet = new THREE.Mesh(
       new THREE.SphereGeometry(planetR, small ? 48 : 96, small ? 32 : 64),
-      new THREE.MeshStandardMaterial({map:planetTexture(), roughness:.95, metalness:0, envMapIntensity:.25})
+      new THREE.ShaderMaterial(planetShader)
     );
     planetGrp.add(planet);
 
-    var clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(planetR * 1.012, small ? 40 : 72, small ? 26 : 48),
-      new THREE.MeshStandardMaterial({map:cloudTexture(), transparent:true, opacity:.55,
-        roughness:1, metalness:0, depthWrite:false})
+    /* Ореол: френель по краю, аддитивно. Прежняя версия была изнанкой сферы
+       с ровной прозрачностью — на просвет она давала тёмный ободок, а не
+       свечение атмосферы. */
+    var halo = new THREE.Mesh(
+      new THREE.SphereGeometry(planetR * 1.16, small ? 32 : 56, small ? 20 : 34),
+      new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        uniforms: {uSun: planetShader.uniforms.uSun},
+        vertexShader: [
+          'varying vec3 vN; varying vec3 vW;',
+          'void main(){ vN=normalize(normalMatrix*normal);',
+          '  vec4 wp=modelMatrix*vec4(position,1.0); vW=wp.xyz;',
+          '  gl_Position=projectionMatrix*viewMatrix*wp; }'
+        ].join('\n'),
+        fragmentShader: [
+          'precision highp float;',
+          'uniform vec3 uSun; varying vec3 vN; varying vec3 vW;',
+          'void main(){',
+          '  vec3 N=normalize(-vN); vec3 V=normalize(cameraPosition-vW);',
+          '  float f=pow(1.0-max(dot(N,V),0.0),2.4);',
+          '  float lit=0.35+0.65*smoothstep(-0.35,0.6,dot(N,normalize(uSun)));',
+          '  gl_FragColor=vec4(vec3(0.20,0.46,0.68)*f*lit*0.62,f*lit*0.36);',
+          '}'
+        ].join('\n')
+      })
     );
-    planetGrp.add(clouds);
+    planetGrp.add(halo);
 
     /* кольца: UV перекладываем на радиус, иначе текстура ляжет по углу */
     var ringGeo = new THREE.RingGeometry(planetR * RING_IN, planetR * RING_OUT,
@@ -541,20 +671,41 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       }
       uv.needsUpdate = true;
     })();
-    var rings = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
-      map:ringTexture(), transparent:true, side:THREE.DoubleSide,
-      depthWrite:false, opacity:.92
+    /* Кольца с тенью планеты: раньше дуга светилась ровно по всему кругу,
+       включая ту часть, что уходит в тень шара. */
+    var rings = new THREE.Mesh(ringGeo, new THREE.ShaderMaterial({
+      transparent:true, side:THREE.DoubleSide, depthWrite:false,
+      uniforms:{
+        uMap:{value:ringTexture()},
+        uSun:{value:planetShader.uniforms.uSun.value},
+        uR:{value:planetR}
+      },
+      vertexShader:[
+        'varying vec2 vUv; varying vec3 vLocal;',
+        'void main(){ vUv=uv; vLocal=position;',
+        '  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }'
+      ].join('\n'),
+      fragmentShader:[
+        'precision highp float;',
+        'uniform sampler2D uMap; uniform vec3 uSun; uniform float uR;',
+        'varying vec2 vUv; varying vec3 vLocal;',
+        'void main(){',
+        '  vec4 t=texture2D(uMap,vUv);',
+        /* Тень: идём от точки кольца к солнцу в системе группы и смотрим,
+           проходит ли луч сквозь шар. Кольцо лежит в плоскости XY меша,
+           поэтому точку сначала кладём в систему планеты. */
+        '  vec3 q=vec3(vLocal.x,-vLocal.z,vLocal.y);',
+        '  vec3 s=normalize(uSun);',
+        '  float b=dot(q,s);',
+        '  float sh=1.0;',
+        '  if(b<0.0){ float h=length(q-s*b); sh=smoothstep(uR*0.98,uR*1.14,h); }',
+        '  gl_FragColor=vec4(t.rgb*mix(0.24,1.0,sh),t.a);',
+        '}'
+      ].join('\n')
     }));
     rings.rotation.x = Math.PI / 2 - 0.30;     /* почти с ребра: так читается кольцом */
     planetGrp.add(rings);
 
-    /* атмосфера: внутренняя сторона чуть большей сферы, аддитивно */
-    var halo = new THREE.Mesh(
-      new THREE.SphereGeometry(planetR * 1.11, small ? 32 : 56, small ? 20 : 34),
-      new THREE.MeshBasicMaterial({color:0x63CDF2, transparent:true, opacity:.16,
-        side:THREE.BackSide, depthWrite:false, blending:THREE.AdditiveBlending})
-    );
-    planetGrp.add(halo);
 
     /* Раскладка слотов разлёта.
        Слоты нельзя задавать списком по индексу узла: в GLB порядок узлов не
@@ -701,6 +852,7 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     root.add(selBox);
     var selOp = 0;
 
+    var satNdc = [1e9, -1e9, 1e9, -1e9];   /* экранный габарит спутника */
     var progress = 0, active = -1, spin = 0, visible = false, raf = 0;
     var offX = small ? 0 : 1.5;
 
@@ -968,6 +1120,8 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
         if(k > 0.02) dist *= k;
         if(done && pass > 0) break;
       }
+      /* габарит спутника в кадре пригодится планете — чтобы не прятаться за него */
+      satNdc[0] = nx0; satNdc[1] = nx1; satNdc[2] = ny0; satNdc[3] = ny1;
 
       /* планета: смещение задаётся в экранных осях от центра кадра */
       camera.getWorldDirection(vFwd);
@@ -976,7 +1130,7 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       var pd = dist + 26;
       var hh = Math.tan(fovY / 2) * pd, hw = hh * camera.aspect;
       /* радиус планеты — доля полукадра; габарит считаем по кольцам */
-      var prad = hh * 0.185, pext = prad * PLANET_EXT;
+      var prad = hh * 0.225, pext = prad * PLANET_EXT;
       /* орбиту жмём к краю кадра: так планета не наезжает на спутника,
          а запас до кромки гарантирует, что кольца не срежет */
       var ang = spin * 0.34 + 1.1;
@@ -988,14 +1142,47 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       if(m > 1e-4){ cx /= m; cy2 /= m; }
       var ox = cx  * Math.max(0, hw - pext) * 0.92;
       var oy = cy2 * Math.max(0, hh - pext) * 0.90;
+
+      /* Спутник заполняет 94 % кадра, и на периметре планета всё равно
+         оказывалась за крылом — со стороны это читалось как «планета
+         пропала». Выталкиваем её за экранный габарит спутника: он уже
+         посчитан подгонкой камеры. Кадр сдвинут `setViewOffset`, поэтому
+         NDC переводим с той же поправкой. */
+      var shift = (Math.abs(viewOffX) > 0.5) ? (2 * viewOffX / vw) : 0;
+      var pnx = ox / hw - shift, pny = oy / hh;
+      var rx = pext / hw, ry = pext / hh, gapX = rx * 0.5, gapY = ry * 0.5;
+      if(satNdc[0] < 1e8 &&
+         pnx + rx + gapX > satNdc[0] && pnx - rx - gapX < satNdc[1] &&
+         pny + ry + gapY > satNdc[2] && pny - ry - gapY < satNdc[3]){
+        var midX = (satNdc[0] + satNdc[1]) / 2, midY = (satNdc[2] + satNdc[3]) / 2;
+        var toX = pnx > midX ? satNdc[1] + rx + gapX : satNdc[0] - rx - gapX;
+        var toY = pny > midY ? satNdc[3] + ry + gapY : satNdc[2] - ry - gapY;
+        /* уходим по той оси, где выталкивать ближе — так планета не прыгает */
+        if(Math.abs(toX - pnx) <= Math.abs(toY - pny)) pnx = toX; else pny = toY;
+      }
+      /* и держим в кадре: кольца срезать нельзя */
+      /* справа лежит список слоёв — туда планете нельзя */
+      var limX = 1 - rx - (listW ? 2 * listW / vw : 0), limY = 1 - ry;
+      pnx = Math.max(-limX - shift, Math.min(limX - shift, pnx));
+      pny = Math.max(-limY, Math.min(limY, pny));
+      ox = (pnx + shift) * hw; oy = pny * hh;
       planetGrp.position.copy(camera.position)
         .addScaledVector(vFwd, pd)
         .addScaledVector(vRight, ox)
         .addScaledVector(vUp,    oy);
       planetGrp.scale.setScalar(prad / planetR);
-      /* три слоя крутятся врозь — иначе шар выглядит наклейкой */
-      planet.rotation.y = spin * 0.90;
-      clouds.rotation.y = spin * 1.28;
+      /* Вращение отдано шейдеру: он сдвигает поток по долготе сам, и палубы
+         едут с разной скоростью без второй сферы. */
+      planetShader.uniforms.uSpin.value = spin * 0.90;
+      /* Солнце сцены светит спутнику сзади-слева, и планете при этом почти
+         всегда доставалась ночная сторона — в кадре висел тёмный кругляш.
+         Даём планете собственное направление света, привязанное к камере:
+         она далеко, несоответствие теней не читается, а диск живой. */
+      planetShader.uniforms.uSun.value
+        .copy(vRight).multiplyScalar(-0.62)
+        .addScaledVector(vUp, 0.34)
+        .addScaledVector(vFwd, -0.86)
+        .normalize();
       rings.rotation.z  = spin * 0.16;
 
       if(composer) composer.render(); else renderer.render(scene, camera);

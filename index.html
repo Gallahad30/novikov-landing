@@ -2587,7 +2587,11 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 
   /* Разрешение занижено намеренно: планета мягкая, разницы не видно, а
      полноэкранный шум с пятью октавами стоит дорого на слабых машинах. */
-  var TARGET = window.NOVIKOV_ORB_SCALE || 0.72;
+  /* Замер на живой машине: кадр 0,01–0,03 мс при 1693×1052. Занижать
+     разрешение при таком запасе незачем — на ретине пониженный холст
+     растягивается и планета выглядит крупными пикселями. Слабые машины
+     подстройка опустит сама. */
+  var TARGET = window.NOVIKOV_ORB_SCALE || 1.0;
   var SCALE = TARGET;
   var W = 0, H = 0, cw = 0, ch = 0;
 
@@ -2595,7 +2599,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     var r = host.getBoundingClientRect();
     cw = Math.max(1, Math.round(r.width));
     ch = Math.max(1, Math.round(r.height));
-    var dpr = Math.min(window.devicePixelRatio || 1, 1.6) * SCALE;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2) * SCALE;
     W = Math.max(1, Math.round(cw * dpr));
     H = Math.max(1, Math.round(ch * dpr));
     canvas.width = W; canvas.height = H;
@@ -2631,7 +2635,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
      заголовок перестаёт выезжать, прокрутка дёргается. Поэтому меряем время
      кадра и опускаем разрешение, пока не уложимся. Планета мягкая, потерю
      резкости на ней не видно. */
-  var acc = 0, accN = 0, giveUp = 0;
+  var acc = 0, accN = 0, giveUp = 0, pace = 0, paceN = 0, lastDrawn = 0;
   function bail(){
     /* Машина не тянет даже на минимальном разрешении. Это не повод показывать
        слайд-шоу: снимаем холст и возвращаем градиентную планету — она стоит
@@ -2643,9 +2647,14 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     if(ext) ext.loseContext();
     if(window.NOVIKOV_DEBUG) console.log('[orb] шейдер снят: машина не тянет');
   }
+  /* Мерить надо стоимость отрисовки, а не промежуток между кадрами. Промежуток
+     задаёт вертикальная синхронизация: он ~16,7 мс и на быстрой машине, и на
+     медленной, и по нему разрешение опускалось бы на ровном месте. Стоимость
+     снимаем синхронно вокруг вызова с `flush`: на видеокарте вызов возвращается
+     сразу и мы остаёмся на полном разрешении, а на программном растеризаторе
+     он занимает сотни миллисекунд — там и опускаем. */
   function adapt(ms){
-    /* Один совсем тяжёлый кадр — не ждём статистики, роняем разрешение сразу. */
-    if(ms > 90){
+    if(ms > 60){
       acc = 0; accN = 0;
       if(SCALE > 0.24){ SCALE = Math.max(0.24, SCALE * 0.6); layout(); return; }
       if(++giveUp > 3 && !window.NOVIKOV_ORB_FORCE) bail();
@@ -2654,26 +2663,34 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     acc += ms; accN++;
     if(accN < 8) return;
     var avg = acc / accN; acc = 0; accN = 0;
-    if(avg > 26 && SCALE > 0.24){ SCALE = Math.max(0.24, SCALE * 0.75); layout(); }
-    else if(avg < 9 && SCALE < TARGET){ SCALE = Math.min(TARGET, SCALE * 1.15); layout(); }
+    /* Второй сигнал — темп самих кадров. Стоимость вызова ловит программный
+       растеризатор, но на медленной видеокарте вызов возвращается сразу, а
+       кадры всё равно не идут. Порог высокий: 60 мс — это меньше семнадцати
+       кадров в секунду, до него вмешиваться незачем. */
+    var slow = paceN > 6 && (pace / paceN) > 60;
+    pace = 0; paceN = 0;
+    if((avg > 12 || slow) && SCALE > 0.24){ SCALE = Math.max(0.24, SCALE * 0.75); layout(); }
+    else if(avg < 3 && !slow && SCALE < TARGET){ SCALE = Math.min(TARGET, SCALE * 1.12); layout(); }
   }
 
   function frame(now){
     raf = 0;
     if(!visible) return;
     if(now - last < MIN_DT){ raf = requestAnimationFrame(frame); return; }
-    var t1 = now;
+    if(lastDrawn){ pace += now - lastDrawn; paceN++; }
+    lastDrawn = now;
     last = now;
+    var t1 = (window.performance && performance.now) ? performance.now() : now;
     var s = sphere();
     gl.uniform2f(uRes, W, H);
     gl.uniform3f(uSph, s[0] * (W / cw), s[1] * (H / ch), s[2] * (W / cw));
     gl.uniform1f(uT, (now - t0) / 1000);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.flush();
+    adapt(((window.performance && performance.now) ? performance.now() : t1) - t1);
     if(first){ first = false; host.classList.add('orb--gl'); canvas.style.opacity = '1'; }
-    /* Время кадра снимаем по следующему rAF: сам вызов drawArrays возвращается
-       мгновенно, работа происходит уже в драйвере. */
-    raf = requestAnimationFrame(function(n2){ adapt(n2 - t1); frame(n2); });
+    raf = requestAnimationFrame(frame);
   }
   function kick(){ if(!raf && visible) raf = requestAnimationFrame(frame); }
 
@@ -2729,7 +2746,8 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       gl.finish();
       return {ms: +((performance.now() - t) / n).toFixed(2), w: W, h: H, scale: +SCALE.toFixed(3)};
     },
-    state: function(){ return {w: W, h: H, scale: SCALE, visible: visible, on: host.classList.contains('orb--gl')}; }
+    state: function(){ return {w: W, h: H, scale: SCALE, visible: visible,
+      on: host.classList.contains('orb--gl'), acc: acc, accN: accN, pace: pace, paceN: paceN}; }
   };
 
   /* Контекст могут отобрать — тогда молча возвращаемся к CSS-планете. */

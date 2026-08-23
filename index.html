@@ -1278,9 +1278,15 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   /* ScrollSmoother двигает страницу трансформом, и при быстрой прокрутке
      IntersectionObserver успевает не всегда: блок остаётся непоказанным.
      Поэтому на каждом кадре досматриваем очередь — она только укорачивается. */
-  var pending = [].slice.call(document.querySelectorAll('.rv'));
+  var pending = [].slice.call(document.querySelectorAll('.rv')), sweptAt = -1e9;
   function sweepReveal(){
     if(!pending.length) return;
+    /* Это страховка, а не основной механизм: показывает IntersectionObserver.
+       Поэтому четырёх проходов в секунду хватает, а каждый кадр читать
+       геометрию нельзя — это принудительный пересчёт раскладки. */
+    var now = (window.performance && performance.now) ? performance.now() : +new Date();
+    if(now - sweptAt < 240) return;
+    sweptAt = now;
     var vh = window.innerHeight, rest = [];
     for(var i = 0; i < pending.length; i++){
       var el = pending[i];
@@ -1291,7 +1297,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     }
     pending = rest;
   }
-  window.addEventListener('load', function(){ setTimeout(sweepReveal, 400); });
+  window.addEventListener('load', function(){
+    setTimeout(function(){ sweptAt = -1e9; sweepReveal(); }, 400);
+  });
 
   /* ---------- размерная линия: реальная ширина колонки ---------- */
   var dimVal = document.getElementById('dimVal'), dimBox = document.getElementById('dim');
@@ -1347,7 +1355,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
      opacity инлайном и затирает её, поэтому исходное значение снимаем сами:
      на миг убираем инлайн и читаем вычисленное. Пересчитываем на resize —
      иначе телефонные значения не подхватятся при повороте экрана. */
+  var skyVH = window.innerHeight;
   function readBaseOps(){
+    skyVH = window.innerHeight;
     for(var i = 0; i < planets.length; i++){
       var el = planets[i][0];
       if(!el) continue;
@@ -1355,6 +1365,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       el.style.opacity = '';
       planets[i][2] = parseFloat(getComputedStyle(el).opacity) || 1;
       el.style.opacity = prev;
+      planets[i][3] = {h: el.offsetHeight || 1, top: el.offsetTop};
     }
   }
   readBaseOps();
@@ -1365,11 +1376,12 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   });
 
   /* Диск, наполовину уехавший за край, читается как обрезок, а не как планета.
-     Поэтому у края гасим: планета растворяется раньше, чем её срежет кромка. */
-  function planetFade(el, top, vh){
-    var h = el.offsetHeight || 1,
-        gap = Math.min(top, vh - (top + h)),  /* запас до ближайшей кромки */
-        k = gap / (h * 0.24);                 /* к нулю приходим ровно на кромке */
+     Поэтому у края гасим: планета растворяется раньше, чем её срежет кромка.
+     Габариты берём из замера, а не из DOM: чтение геометрии сразу после записи
+     трансформа заставляет браузер пересчитывать раскладку каждый кадр. */
+  function planetFade(m, top, vh){
+    var gap = Math.min(top, vh - (top + m.h)),  /* запас до ближайшей кромки */
+        k = gap / (m.h * 0.24);                 /* к нулю приходим ровно на кромке */
     return k < 0 ? 0 : (k > 1 ? 1 : k);
   }
 
@@ -1377,13 +1389,13 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     if(skyDust)  skyDust.style.transform  = 'translate3d(0,' + (-st * 0.035) + 'px,0)';
     if(skyStars) skyStars.style.transform = 'translate3d(0,' + (-st * 0.075) + 'px,0)';
     if(skyNeb)   skyNeb.style.transform   = 'translate3d(0,' + (-st * 0.02) + 'px,0)';
-    var vh = window.innerHeight;
+    var vh = skyVH;
     for(var i=0;i<planets.length;i++){
-      var el = planets[i][0];
-      if(!el) continue;
-      var y = -st * planets[i][1];
-      el.style.transform = 'translate3d(0,' + y + 'px,0)';
-      el.style.opacity = (planets[i][2] * planetFade(el, el.offsetTop + y, vh)).toFixed(3);
+      var m = planets[i];
+      if(!m[0]) continue;
+      var y = -st * m[1];
+      m[0].style.transform = 'translate3d(0,' + y + 'px,0)';
+      m[0].style.opacity = (m[2] * planetFade(m[3], m[3].top + y, vh)).toFixed(3);
     }
   }
 

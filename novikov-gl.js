@@ -151,7 +151,12 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
 
     var root = new THREE.Group(); scene.add(root);
     var modules = [];
-    function mod(y0, dy){ var g = new THREE.Group(); g.userData.y0 = y0; g.userData.dy = dy; root.add(g); modules.push(g); return g; }
+    function mod(y0, dy){
+      var g = new THREE.Group();
+      g.userData.y0 = y0; g.userData.dy = dy;
+      g.userData.halfH = 0.55; g.userData.radXZ = 2.6;   /* запас для процедурной сборки */
+      root.add(g); modules.push(g); return g;
+    }
     var RB = A.RoundedBoxGeometry;
     function box(w,h,d,m){
       var r = Math.min(w,h,d) * 0.16;
@@ -244,6 +249,13 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
           });
           g.userData.y0 = g.position.y;
           g.userData.dy = [2.9, 1.0, -0.25, -1.5, -2.7, -3.85][n];
+          /* габариты модуля считаем один раз: по ним камера подбирает
+             дистанцию, иначе разлетевшийся спутник вылезает за кадр */
+          var bb = new THREE.Box3().setFromObject(g);
+          g.userData.halfH = Math.max(Math.abs(bb.max.y - g.position.y),
+                                      Math.abs(g.position.y - bb.min.y));
+          g.userData.radXZ = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x),
+                                      Math.abs(bb.min.z), Math.abs(bb.max.z));
           root.add(g); modules.push(g);
         });
         modelReady = true;
@@ -292,41 +304,233 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       })));
     })();
 
-    /* видимый диск солнца плюс два аддитивных ореола вместо блума */
-    var sunPos = sunDir.clone().multiplyScalar(46);
-    var sunDisc = new THREE.Mesh(
-      new THREE.SphereGeometry(2.4, small ? 20 : 36, small ? 14 : 24),
-      new THREE.MeshBasicMaterial({color:0xFFF6E2})
-    );
-    sunDisc.position.copy(sunPos);
-    sky.add(sunDisc);
-    /* Диск сам по себе стоит чуть за краем кадра: в рамку заходит его свечение,
-       поэтому внешние ореолы намеренно крупные и слабые. */
-    [[4.6, 0.24, 0xFFD9A0], [11.0, 0.15, 0xF2884E], [24.0, 0.07, 0xF2775A]].forEach(function(h){
-      var glow = new THREE.Mesh(
-        new THREE.SphereGeometry(h[0], small ? 18 : 30, small ? 12 : 20),
-        new THREE.MeshBasicMaterial({color:h[2], transparent:true, opacity:h[1],
-          side:THREE.BackSide, depthWrite:false, blending:THREE.AdditiveBlending})
-      );
-      glow.position.copy(sunPos);
-      sky.add(glow);
-    });
+    /* ---------- планета ----------
+       Живёт в пространстве камеры: сдвиг задаётся в экранных осях, поэтому
+       она облетает спутника и при этом никогда не режется краем кадра.
+       Собрана из трёх слоёв: диск, облачная вуаль и кольца — каждый крутится
+       со своей скоростью, иначе шар читается как наклейка. */
+
+    /* Значный шум с периодом по долготе: без периода на текстуре виден шов. */
+    function nhash(i, j){
+      var n = (i * 374761393 + j * 668265263) | 0;
+      n = (n ^ (n >>> 13)) * 1274126177;
+      return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+    }
+    function vnoise(x, y, per){
+      var xi = Math.floor(x), yi = Math.floor(y),
+          xf = x - xi, yf = y - yi,
+          u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+      function h(a, b){ return nhash(((a % per) + per) % per, b); }
+      var a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    }
+    function fbm(x, y, per, oct){
+      var s = 0, amp = 0.5, f = 1;
+      for(var i = 0; i < oct; i++){
+        s += vnoise(x * f, y * f, per * f) * amp;
+        amp *= 0.5; f *= 2;
+      }
+      return s;
+    }
+
+    function planetTexture(){
+      var W = small ? 768 : 1536, H = W / 2;
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var x = c.getContext('2d');
+      var img = x.createImageData(W, H), d = img.data;
+
+      /* пояса: цвет по широте. Полос больше, чем нужно глазу вблизи —
+         на мелком масштабе они сливаются в плавный градиент, и это правильно. */
+      var bands = [
+        [0.00, 226, 240, 248], [0.06, 178, 208, 226], [0.13, 120, 162, 188],
+        [0.19,  62, 114, 148], [0.26, 142, 180, 202], [0.32,  86, 134, 166],
+        [0.39, 168, 200, 220], [0.46,  46,  94, 128], [0.52, 112, 156, 184],
+        [0.58,  38,  84, 118], [0.65, 156, 192, 214], [0.72,  70, 120, 152],
+        [0.79, 128, 168, 194], [0.86,  96, 142, 172], [0.93, 190, 216, 232],
+        [1.00, 232, 244, 250]
+      ];
+      function band(v){
+        for(var i = 1; i < bands.length; i++){
+          if(v <= bands[i][0]){
+            var a = bands[i-1], b = bands[i], t = (v - a[0]) / (b[0] - a[0]);
+            t = t * t * (3 - 2 * t);
+            return [a[1] + (b[1]-a[1])*t, a[2] + (b[2]-a[2])*t, a[3] + (b[3]-a[3])*t];
+          }
+        }
+        return [232, 244, 250];
+      }
+
+      var PER = 8, OCT = small ? 4 : 5;
+      for(var yy = 0; yy < H; yy++){
+        var lat = yy / (H - 1);
+        /* к полюсам завихрения слабеют: там ветер идёт вдоль параллели */
+        var pole = Math.sin(lat * Math.PI);
+        for(var xx = 0; xx < W; xx++){
+          var ux = xx / W * PER;
+          /* сдвиг широты шумом — из ровных полос получаются языки и завитки */
+          var warp = (fbm(ux * 1.6, lat * 5.2, PER, OCT) - 0.5) * 0.085 * pole
+                   + Math.sin(ux * 2.4 + lat * 19) * 0.006;
+          var col = band(Math.min(1, Math.max(0, lat + warp)));
+          /* мелкая рябь поверх — фестоны на границах поясов */
+          var fine = (fbm(ux * 7.0, lat * 26.0, PER * 4, 3) - 0.5) * 0.30 * pole;
+          var sh = 1 + fine + Math.sin(ux * 11 + lat * 44) * 0.022;
+          var o = (yy * W + xx) * 4;
+          d[o]   = Math.max(0, Math.min(255, col[0] * sh));
+          d[o+1] = Math.max(0, Math.min(255, col[1] * sh));
+          d[o+2] = Math.max(0, Math.min(255, col[2] * sh));
+          d[o+3] = 255;
+        }
+      }
+      x.putImageData(img, 0, 0);
+
+      /* вихри: один большой и несколько мелких, все вытянуты по параллели */
+      var storms = [
+        [0.62, 0.63, 0.115, 0.085, -0.10, 'rgba(216,152,106,', 0.95],
+        [0.22, 0.41, 0.052, 0.032,  0.08, 'rgba(226,198,168,', 0.55],
+        [0.83, 0.34, 0.040, 0.026, -0.05, 'rgba(198,164,140,', 0.48],
+        [0.41, 0.74, 0.058, 0.030,  0.04, 'rgba(150,182,204,', 0.42]
+      ];
+      storms.forEach(function(s){
+        var sx = W * s[0], sy = H * s[1], rw = W * s[2], rh = H * s[3];
+        var g = x.createRadialGradient(sx, sy, 0, sx, sy, rw);
+        g.addColorStop(0,    s[5] + s[6] + ')');
+        g.addColorStop(0.45, s[5] + (s[6] * 0.6) + ')');
+        g.addColorStop(0.78, s[5] + (s[6] * 0.22) + ')');
+        g.addColorStop(1,    s[5] + '0)');
+        x.save();
+        x.translate(sx, sy); x.rotate(s[4]); x.scale(1, rh / rw); x.translate(-sx, -sy);
+        x.fillStyle = g;
+        x.beginPath(); x.arc(sx, sy, rw, 0, Math.PI * 2); x.fill();
+        x.restore();
+      });
+
+      /* полярные шапки: дымка, а не белая заливка */
+      [0, 1].forEach(function(i){
+        var g2 = x.createLinearGradient(0, i ? H : 0, 0, i ? H - H * 0.16 : H * 0.16);
+        g2.addColorStop(0,   'rgba(236,246,253,.88)');
+        g2.addColorStop(0.5, 'rgba(226,240,250,.42)');
+        g2.addColorStop(1,   'rgba(226,240,250,0)');
+        x.fillStyle = g2;
+        x.fillRect(0, i ? H - H * 0.16 : 0, W, H * 0.16);
+      });
+
+      var tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.anisotropy = 4;
+      return tex;
+    }
+
+    /* Облачная вуаль: только альфа. Крутится быстрее диска — получается
+       différentiel, из-за которого шар читается объёмным. */
+    function cloudTexture(){
+      var W = small ? 512 : 1024, H = W / 2;
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var x = c.getContext('2d');
+      var img = x.createImageData(W, H), d = img.data;
+      var PER = 8;
+      for(var yy = 0; yy < H; yy++){
+        var lat = yy / (H - 1), pole = Math.sin(lat * Math.PI);
+        for(var xx = 0; xx < W; xx++){
+          var ux = xx / W * PER;
+          var n = fbm(ux * 2.6, lat * 9.0, PER, 4);
+          /* вытягиваем по долготе: облака идут лентами, а не пятнами */
+          var a = Math.max(0, n - 0.52) * 2.6 * pole;
+          var o = (yy * W + xx) * 4;
+          d[o] = 236; d[o+1] = 246; d[o+2] = 252;
+          d[o+3] = Math.min(255, a * 255);
+        }
+      }
+      x.putImageData(img, 0, 0);
+      var tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    /* Кольца: профиль по радиусу. Деления — не декор, а то, по чему глаз
+       понимает, что это кольца, а не диск. */
+    function ringTexture(){
+      var W = 1024, H = 8;
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var x = c.getContext('2d');
+      var img = x.createImageData(W, H), d = img.data;
+      /* [центр, ширина, плотность] — деления это провалы плотности */
+      var gaps = [[0.00,0.030,0],[0.075,0.020,0.15],[0.34,0.030,0.10],
+                  [0.52,0.014,0.35],[0.71,0.022,0.22],[0.97,0.030,0]];
+      for(var i = 0; i < W; i++){
+        var t = i / (W - 1);
+        var a = 0.86;
+        for(var k = 0; k < gaps.length; k++){
+          var dd = Math.abs(t - gaps[k][0]) / gaps[k][1];
+          if(dd < 1) a = Math.min(a, gaps[k][2] + (a - gaps[k][2]) * (dd * dd));
+        }
+        /* тонкая штриховка: сотни узких колечек */
+        a *= 0.80 + 0.20 * Math.sin(t * 220) * Math.sin(t * 71);
+        a *= 0.55 + 0.45 * fbm(t * 26, 0.5, 64, 4);
+        var warm = 0.30 + 0.55 * t;
+        for(var yy2 = 0; yy2 < H; yy2++){
+          var o = (yy2 * W + i) * 4;
+          d[o]   = 198 + warm * 40;
+          d[o+1] = 206 + warm * 22;
+          d[o+2] = 214 - warm * 18;
+          d[o+3] = Math.max(0, Math.min(255, a * 255));
+        }
+      }
+      x.putImageData(img, 0, 0);
+      var tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    var planetR = 3.4;
+    var RING_IN = 1.36, RING_OUT = 2.28;      /* в радиусах планеты */
+    var PLANET_EXT = RING_OUT;                /* габарит с кольцами */
+
+    var planetGrp = new THREE.Group();
+    planetGrp.rotation.z = 0.30;              /* наклон оси, он же наклон колец */
+    scene.add(planetGrp);
 
     var planet = new THREE.Mesh(
-      new THREE.SphereGeometry(13, small ? 32 : 56, small ? 20 : 34),
-      new THREE.MeshStandardMaterial({color:0x1B3A50, roughness:.95, metalness:0, envMapIntensity:.35})
+      new THREE.SphereGeometry(planetR, small ? 48 : 96, small ? 32 : 64),
+      new THREE.MeshStandardMaterial({map:planetTexture(), roughness:.95, metalness:0, envMapIntensity:.25})
     );
-    planet.position.set(-27, -6.5, -34);
-    sky.add(planet);
+    planetGrp.add(planet);
 
-    /* атмосфера: подсветка по краю, внутренняя сторона сферы */
+    var clouds = new THREE.Mesh(
+      new THREE.SphereGeometry(planetR * 1.012, small ? 40 : 72, small ? 26 : 48),
+      new THREE.MeshStandardMaterial({map:cloudTexture(), transparent:true, opacity:.55,
+        roughness:1, metalness:0, depthWrite:false})
+    );
+    planetGrp.add(clouds);
+
+    /* кольца: UV перекладываем на радиус, иначе текстура ляжет по углу */
+    var ringGeo = new THREE.RingGeometry(planetR * RING_IN, planetR * RING_OUT,
+                                         small ? 96 : 192, 1);
+    (function(){
+      var p = ringGeo.attributes.position, uv = ringGeo.attributes.uv, v = new THREE.Vector3();
+      var rin = planetR * RING_IN, rout = planetR * RING_OUT;
+      for(var i = 0; i < p.count; i++){
+        v.fromBufferAttribute(p, i);
+        var t = (v.length() - rin) / (rout - rin);
+        uv.setXY(i, t, (i % 2) ? 1 : 0);
+      }
+      uv.needsUpdate = true;
+    })();
+    var rings = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
+      map:ringTexture(), transparent:true, side:THREE.DoubleSide,
+      depthWrite:false, opacity:.92
+    }));
+    rings.rotation.x = Math.PI / 2 - 0.30;     /* почти с ребра: так читается кольцом */
+    planetGrp.add(rings);
+
+    /* атмосфера: внутренняя сторона чуть большей сферы, аддитивно */
     var halo = new THREE.Mesh(
-      new THREE.SphereGeometry(14.1, small ? 32 : 56, small ? 20 : 34),
-      new THREE.MeshBasicMaterial({color:0x3FA9D8, transparent:true, opacity:.13,
+      new THREE.SphereGeometry(planetR * 1.11, small ? 32 : 56, small ? 20 : 34),
+      new THREE.MeshBasicMaterial({color:0x63CDF2, transparent:true, opacity:.16,
         side:THREE.BackSide, depthWrite:false, blending:THREE.AdditiveBlending})
     );
-    halo.position.copy(planet.position);
-    sky.add(halo);
+    planetGrp.add(halo);
 
     var progress = 0, active = -1, spin = 0, visible = false, raf = 0;
     var offX = small ? 0 : 1.5;
@@ -352,21 +556,105 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     resize();
     window.addEventListener('resize', resize);
 
+    /* Направление взгляда постоянное, меняется только дистанция:
+       её считаем по реальному разлёту, поэтому кадр не режет спутника. */
+    var viewDir = new THREE.Vector3(0.60, 0.372, 0.69).normalize();
+    var STAGGER = 0.30;              /* доля хода на разъезд одного модуля */
+    var camTarget = new THREE.Vector3();
+    var vFwd = new THREE.Vector3(), vRight = new THREE.Vector3(), vUp = new THREE.Vector3();
+
+    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+    /* лёгкий перехлёст: модуль проскакивает своё место и возвращается —
+       движение читается как выемка, а не как линейный сдвиг */
+    function easeOutBack(t){
+      var s = 0.62, u = t - 1;
+      return 1 + (s + 1) * u * u * u + s * u * u;
+    }
+    function easeInOutCubic(t){
+      return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2;
+    }
+    function clamp01(v){ return v < 0 ? 0 : v > 1 ? 1 : v; }
+
     function frame(){
       raf = 0;
-      var e = progress < .5 ? 2*progress*progress : 1 - Math.pow(-2*progress+2,2)/2;
-      for(var n=0;n<modules.length;n++){
-        var g = modules[n], y0 = g.userData.y0;
-        g.position.y = y0 + (g.userData.dy - y0) * e;
+      var eCam = easeInOutCubic(progress);
+      var n, g, yMin = 1e9, yMax = -1e9, rad = 0;
+
+      for(n = 0; n < modules.length; n++){
+        g = modules[n];
+        /* каждый модуль уходит со своей задержкой: стопка расслаивается
+           сверху вниз, а не разлетается разом */
+        var t0 = (n / Math.max(1, modules.length - 1)) * (1 - STAGGER);
+        var raw = clamp01((progress - t0) / STAGGER);
+        var en = easeOutBack(raw);
+        var y0 = g.userData.y0;
+        g.position.y = y0 + (g.userData.dy - y0) * en;
+        /* доворот идёт быстрее сдвига и успевает встать до остановки:
+           модуль будто отвинтили, а не вынули лифтом */
+        var rot = easeOutCubic(clamp01(raw * 1.25));
+        g.rotation.y = (n % 2 ? -1 : 1) * 0.26 * rot;
+        g.rotation.z = (n % 2 ? 1 : -1) * 0.055 * rot;
+        g.rotation.x = (n % 3 === 0 ? 1 : -1) * 0.026 * rot;
+
         var want = (active === n) ? .34 : 0;
         g.position.x += (want - g.position.x) * .12;
+
+        var h = g.userData.halfH || 0.5, r = g.userData.radXZ || 1.5;
+        yMin = Math.min(yMin, g.position.y - h);
+        yMax = Math.max(yMax, g.position.y + h);
+        rad  = Math.max(rad, r + Math.abs(g.position.x));
       }
-      root.rotation.y = -0.55 + e*0.9 + spin;
-      root.rotation.x = 0.02;
+
+      root.rotation.y = -0.55 + eCam*0.9 + spin;
+      root.rotation.x = 0.02 + eCam * 0.05;
       sky.rotation.y = spin * 0.22;   /* небо ползёт медленнее спутника */
-      var kk = 1 + e*0.52;
-      camera.position.set(5.3*kk + offX, (3.5 + e*1.0)*kk*0.94, 6.1*kk);
-      camera.lookAt(offX, -0.12 - 0.42*e, 0);
+
+      /* дистанция под габарит: по вертикали и по горизонтали, что жёстче */
+      var cy = (yMin + yMax) / 2, halfH = (yMax - yMin) / 2;
+      var fovY = camera.fov * Math.PI / 180;
+      var fovX = 2 * Math.atan(Math.tan(fovY / 2) * camera.aspect);
+      var margin = 0.55;
+      var dist = Math.max(
+        (halfH + margin) / Math.tan(fovY / 2),
+        (rad + margin + Math.abs(offX)) / Math.tan(fovX / 2)
+      ) + rad * 0.55;
+
+      /* камера подымается по ходу разбора: сверху расслоение читается лучше */
+      viewDir.set(0.60, 0.300 + 0.155 * eCam, 0.69).normalize();
+      camTarget.set(offX, cy, 0);
+      camera.position.copy(viewDir).multiplyScalar(dist).add(camTarget);
+      camera.lookAt(camTarget);
+      camera.updateMatrixWorld();
+
+      /* планета: смещение задаётся в экранных осях от центра кадра */
+      camera.getWorldDirection(vFwd);
+      vRight.crossVectors(vFwd, camera.up).normalize();
+      vUp.crossVectors(vRight, vFwd).normalize();
+      var pd = dist + 26;
+      var hh = Math.tan(fovY / 2) * pd, hw = hh * camera.aspect;
+      /* радиус планеты — доля полукадра; габарит считаем по кольцам */
+      var prad = hh * 0.185, pext = prad * PLANET_EXT;
+      /* орбиту жмём к краю кадра: так планета не наезжает на спутника,
+         а запас до кромки гарантирует, что кольца не срежет */
+      var ang = spin * 0.34 + 1.1;
+      /* Круговая орбита проходит через центр кадра — там спутник. Поэтому
+         путь раздуваем до скруглённого прямоугольника: планета идёт по
+         периметру и в середину кадра не заходит вовсе. */
+      var cx = Math.cos(ang), cy2 = Math.sin(ang), pw = 6;
+      var m = Math.pow(Math.pow(Math.abs(cx), pw) + Math.pow(Math.abs(cy2), pw), 1 / pw);
+      if(m > 1e-4){ cx /= m; cy2 /= m; }
+      var ox = cx  * Math.max(0, hw - pext) * 0.92;
+      var oy = cy2 * Math.max(0, hh - pext) * 0.90;
+      planetGrp.position.copy(camera.position)
+        .addScaledVector(vFwd, pd)
+        .addScaledVector(vRight, ox)
+        .addScaledVector(vUp,    oy);
+      planetGrp.scale.setScalar(prad / planetR);
+      /* три слоя крутятся врозь — иначе шар выглядит наклейкой */
+      planet.rotation.y = spin * 0.90;
+      clouds.rotation.y = spin * 1.28;
+      rings.rotation.z  = spin * 0.16;
+
       if(composer) composer.render(); else renderer.render(scene, camera);
       /* при hold кадры рисуются только по set(): иначе непрерывный цикл
          съедает главный поток и покадровая съёмка не поспевает */

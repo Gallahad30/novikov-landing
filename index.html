@@ -169,6 +169,16 @@ h3{font-family:var(--body);font-weight:600;font-size:1.2rem;letter-spacing:-.01e
 .rv{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
 .rv.in{opacity:1;transform:none}
 html:not(.js) .rv{opacity:1;transform:none}
+/* Карточка сидит в сетке, у которой подложка светлее самой карточки: сделав
+   прозрачной карточку целиком, мы показываем эту подложку — на экране висит
+   пустая светлая плашка. Поэтому у карточек гаснет содержимое, а не блок. */
+.cards .card.rv{opacity:1;transform:none;transition:background .3s}
+.cards .card.rv > *{opacity:0;transform:translateY(14px);
+  transition:opacity .7s var(--ease),transform .7s var(--ease)}
+.cards .card.rv.in > *{opacity:1;transform:none}
+.cards .card.rv.d1 > *{transition-delay:.08s}
+.cards .card.rv.d2 > *{transition-delay:.16s}
+html:not(.js) .cards .card.rv > *{opacity:1;transform:none}
 .d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}.d4{transition-delay:.32s}
 
 /* ============================================================
@@ -185,7 +195,8 @@ body.bp section[data-role]::after{opacity:1;transform:none}
 .hero[data-role]::after{top:clamp(112px,15vh,164px)}
 .spec[data-role]::after{top:-11px}
 .contact[data-role]::after{color:var(--pencil);background:var(--deep);border-color:rgba(242,119,90,.45)}
-@media (max-width:760px){ section[data-role]::after{font-size:.54rem;letter-spacing:.06em;padding:3px 6px;left:var(--gut);right:auto} }
+/* на узком экране подпись роли ложилась на надзаголовок — убираем целиком */
+@media (max-width:760px){ section[data-role]::after{display:none} }
 
 .ann{position:absolute;z-index:7;font-family:var(--mono);font-size:.64rem;font-weight:500;letter-spacing:.07em;
   text-transform:uppercase;color:var(--pencil);white-space:nowrap;pointer-events:none;opacity:0;transform:translateY(-4px);
@@ -636,82 +647,171 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
     radial-gradient(46% 34% at 12% 62%,rgba(99,205,242,.10),transparent 66%),
     radial-gradient(52% 38% at 58% 96%,rgba(242,119,90,.09),transparent 62%)}
 
-/* планета: сфера с терминатором и краевой подсветкой */
-.planet{border-radius:50%;
+/* планета: диск с поясами, шапками, терминатором и краевой подсветкой */
+/* Диск собран слоями: шапки, широтные пояса двух частот, блик подсвета,
+   общий шар. Слоёв больше, чем видно с ходу, — именно из них берётся объём. */
+.planet{border-radius:50%;overflow:hidden;
   background:
-    radial-gradient(circle at 32% 28%,rgba(255,255,255,.10),transparent 42%),
+    radial-gradient(ellipse 62% 16% at 50% 2%,rgba(232,244,252,.34),transparent 74%),
+    radial-gradient(ellipse 54% 13% at 50% 99%,rgba(232,244,252,.26),transparent 74%),
+    repeating-linear-gradient(7deg,rgba(255,255,255,.055) 0 2.6%,rgba(0,0,0,.075) 2.6% 6.1%),
+    repeating-linear-gradient(7deg,rgba(255,255,255,.030) 0 0.9%,rgba(0,0,0,.035) 0.9% 2.1%),
+    radial-gradient(ellipse 34% 9% at 66% 62%,rgba(226,168,124,.30),transparent 70%),
+    radial-gradient(ellipse 22% 6% at 28% 41%,rgba(226,206,180,.18),transparent 72%),
+    radial-gradient(circle at 32% 28%,rgba(255,255,255,.12),transparent 42%),
     radial-gradient(circle at 30% 30%,var(--p-hi,#2C4A63) 0%,var(--p-lo,#0B1622) 62%,#05080F 100%);
   box-shadow:inset -18px -10px 44px rgba(0,0,0,.7), 0 0 70px -12px var(--p-glow,rgba(47,159,208,.35))}
+/* терминатор и ободок атмосферы */
 .planet::after{content:"";position:absolute;inset:0;border-radius:50%;
-  box-shadow:inset 0 0 0 1px rgba(233,241,247,.09)}
-.planet--a{width:min(46vw,560px);aspect-ratio:1;right:-14vw;top:6vh;
-  --p-hi:#27506B;--p-lo:#0A1826;--p-glow:rgba(47,159,208,.32);opacity:.85}
-.planet--b{width:min(20vw,210px);aspect-ratio:1;left:-6vw;top:118vh;
-  --p-hi:#5A3A34;--p-lo:#180F12;--p-glow:rgba(242,119,90,.28);opacity:.8}
-.planet--c{width:min(70vw,860px);aspect-ratio:1;left:50%;margin-left:min(-35vw,-430px);top:236vh;
-  --p-hi:#22485F;--p-lo:#070E18;--p-glow:rgba(99,205,242,.22);opacity:.7}
+  background:linear-gradient(112deg,transparent 40%,rgba(2,5,11,.62) 86%);
+  box-shadow:inset 0 0 0 1px rgba(233,241,247,.10), inset 8px 10px 30px -16px rgba(170,220,255,.6)}
+/* облачная рябь по диску */
+.planet::before{content:"";position:absolute;inset:-20% -50%;opacity:.22;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.014 .07' numOctaves='3' seed='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23p)'/></svg>");
+  background-size:55% 55%;animation:orbDrift 70s linear infinite}
+/* ни одна планета не уходит за край: диск виден диском, а не срезом */
+/* Стояла ровно за планетой с кольцами и спорила с ней. Уводим ниже и влево:
+   в первом экране остаётся одна планета, вторая встречается на прокрутке. */
+.planet--a{width:min(24vw,270px);aspect-ratio:1;left:4vw;top:104vh;
+  --p-hi:#27506B;--p-lo:#0A1826;--p-glow:rgba(47,159,208,.32);opacity:.7;transition:opacity .18s linear}
+.planet--b{width:min(17vw,190px);aspect-ratio:1;left:5vw;top:120vh;
+  --p-hi:#5A3A34;--p-lo:#180F12;--p-glow:rgba(242,119,90,.28);opacity:.8;transition:opacity .18s linear}
+.planet--c{width:min(42vw,470px);aspect-ratio:1;left:50%;margin-left:min(-21vw,-235px);top:240vh;
+  --p-hi:#22485F;--p-lo:#070E18;--p-glow:rgba(99,205,242,.22);opacity:.6;transition:opacity .18s linear}
 
 /* кольцо у второй планеты */
 .planet--b::before{content:"";position:absolute;left:-34%;right:-34%;top:44%;height:14%;
   border-radius:50%;border:1px solid rgba(242,119,90,.35);transform:rotate(-17deg);opacity:.8}
 
-@media (max-width:760px){ .sky__neb{opacity:.55} .planet--a{opacity:.6} .planet--c{opacity:.5} }
+/* На телефоне сцена узкая: три планеты разом лезут на спутника. Гасим. */
+@media (max-width:760px){ .sky__neb{opacity:.55} .planet--a{opacity:.26;width:34vw;left:4vw;top:112vh}
+  .planet--b{width:26vw;left:6vw;opacity:.4} .planet--c{opacity:.35;width:56vw;margin-left:-28vw} }
 @media (prefers-reduced-motion:reduce){ .sky>*{will-change:auto} }
 
-/* --- солнце в первом экране --- */
-/* Собственные токены: роли основной палитры не трогаем, солнце — иллюстрация,
-   а не интерфейс. Оно же мотивирует блики на 3D-сцене ниже. */
-.sun{
-  --sun-core:#FFF3D6; --sun-mid:#FFC46A; --sun-rim:#F2884E; --sun-deep:#C4471F;
-  align-self:start;position:relative;aspect-ratio:1;width:100%;max-width:380px;
+/* --- планета в первом экране --- */
+/* Собственные токены: планета — иллюстрация, роли интерфейсной палитры не трогаем. */
+.orb{
+  --orb-hi:#5A93B8; --orb-mid:#27536F; --orb-lo:#0E2740; --orb-deep:#050D18;
+  --orb-warm:#C98A5E; --orb-ring:rgba(153,196,224,.55);
+  align-self:start;position:relative;aspect-ratio:1;width:100%;max-width:390px;
   margin-inline:auto;display:grid;place-items:center;isolation:isolate}
-.sun>*{position:absolute;border-radius:50%}
+.orb>*{position:absolute}
 
-.sun__corona{inset:-26%;background:
-    radial-gradient(circle,rgba(255,196,106,.34) 34%,rgba(242,136,78,.20) 48%,transparent 68%);
-  filter:blur(6px);animation:sunBreath 7s ease-in-out infinite}
-.sun__flare{inset:-34%;border-radius:0;opacity:.5;
+/* свечение атмосферы наружу */
+/* Ободок атмосферы снаружи диска: старт градиента привязан к краю тела,
+   иначе свечение заливает сам диск и планета превращается в лампу. */
+.orb__glow{inset:6%;border-radius:50%;
+  background:radial-gradient(circle,transparent 58%,rgba(99,205,242,.20) 66%,
+             rgba(47,159,208,.09) 77%,transparent 89%);
+  filter:blur(6px);animation:orbBreath 9s ease-in-out infinite}
+
+/* Кольцо: задняя половина уходит за диск, передняя ложится поверх.
+   Деления рисуем провалами между вложенными обводками — по ним глаз и
+   опознаёт кольцо. Штриховка сверху добавляет мелкие колечки. */
+.orb__ring{left:3%;right:3%;top:43.5%;height:31%;border-radius:50%;
+  border:1px solid var(--orb-ring);
+  box-shadow:
+    inset 0 0 0 2px  rgba(176,214,238,.34),
+    inset 0 0 0 4px  rgba(120,160,190,.05),   /* деление */
+    inset 0 0 0 7px  rgba(186,220,242,.30),
+    inset 0 0 0 10px rgba(146,186,214,.16),
+    inset 0 0 0 11px rgba(90,120,150,.03),    /* деление */
+    inset 0 0 0 15px rgba(198,226,244,.22),
+    inset 0 0 0 19px rgba(150,190,220,.09);
+  transform:rotate(-15deg)}
+/* мелкая штриховка по кольцу */
+.orb__ring::before{content:"";position:absolute;inset:0;border-radius:50%;
   background:repeating-conic-gradient(from 0deg,
-    rgba(255,214,150,.22) 0deg 1.2deg, transparent 1.2deg 7deg);
-  -webkit-mask-image:radial-gradient(circle,transparent 40%,#000 52%,transparent 76%);
-  mask-image:radial-gradient(circle,transparent 40%,#000 52%,transparent 76%);
-  animation:sunSpin 220s linear infinite}
+    rgba(226,240,250,.10) 0deg 1.4deg, rgba(0,0,0,.10) 1.4deg 2.8deg);
+  -webkit-mask:radial-gradient(closest-side,transparent 62%,#000 66%,#000 99%,transparent);
+  mask:radial-gradient(closest-side,transparent 62%,#000 66%,#000 99%,transparent);
+  opacity:.5;mix-blend-mode:overlay}
+.orb__ring--back{clip-path:inset(0 0 50% 0)}
+.orb__ring--front{clip-path:inset(50% 0 0 0);opacity:.9}
+/* тень планеты на передней дуге: без неё кольцо висит отдельно от шара */
+.orb__ring--front::after{content:"";position:absolute;left:24%;right:24%;top:0;bottom:0;
+  border-radius:50%;
+  background:radial-gradient(ellipse 52% 120% at 46% 40%,rgba(2,5,11,.58),rgba(2,5,11,.28) 58%,transparent 76%);
+  filter:blur(4px)}
 
-.sun__disc{inset:14%;overflow:hidden;
-  background:radial-gradient(circle at 42% 38%,var(--sun-core) 0%,var(--sun-mid) 46%,var(--sun-rim) 78%,var(--sun-deep) 100%);
-  box-shadow:0 0 70px 12px rgba(255,180,96,.32), 0 0 160px 40px rgba(242,119,90,.16)}
-/* гранулы фотосферы: порог по шуму даёт зернистую конвекцию */
-.sun__grain{inset:0;mix-blend-mode:overlay;opacity:.55;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='5'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23g)'/></svg>");
-  background-size:52% 52%;animation:sunSpin 90s linear infinite}
-/* пятна и факелы */
-.sun__spots{inset:0;opacity:.7;
+/* сам диск */
+.orb__body{inset:22%;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 36% 32%,var(--orb-hi) 0%,var(--orb-mid) 42%,var(--orb-lo) 74%,var(--orb-deep) 100%);
+  box-shadow:0 0 60px -14px rgba(47,159,208,.5)}
+/* тень от кольца на самом диске — она и связывает кольцо с шаром */
+.orb__body::after{content:"";position:absolute;left:-8%;right:-8%;top:46.5%;height:8%;
+  background:linear-gradient(90deg,transparent,rgba(2,6,14,.52) 16%,rgba(2,6,14,.60) 84%,transparent);
+  transform:rotate(-15deg);filter:blur(4px);opacity:.52;z-index:3}
+
+/* широтные пояса газового гиганта */
+/* Две частоты: широкие пояса и тонкие струи между ними. Одной частоты
+   мало — полосы читаются как обои, а не как атмосфера. */
+.orb__bands{inset:0;opacity:.6;mix-blend-mode:overlay;
   background:
-    radial-gradient(circle at 32% 62%,rgba(150,52,16,.75) 0 3.5%,transparent 5%),
-    radial-gradient(circle at 38% 66%,rgba(150,52,16,.55) 0 2%,transparent 3.4%),
-    radial-gradient(circle at 68% 34%,rgba(150,52,16,.6) 0 2.6%,transparent 4%),
-    radial-gradient(circle at 58% 72%,rgba(255,246,214,.55) 0 4.5%,transparent 7%),
-    radial-gradient(circle at 24% 40%,rgba(255,246,214,.4) 0 3.5%,transparent 6%);
-  animation:sunSpin 140s linear infinite}
-/* потемнение к краю: без него диск выглядит наклейкой */
-.sun__limb{inset:0;background:radial-gradient(circle,transparent 58%,rgba(120,40,12,.42) 88%,rgba(70,20,6,.6) 100%)}
+    repeating-linear-gradient(6deg,
+      rgba(255,255,255,.045) 0 .8%,
+      rgba(0,0,0,.055) .8% 1.7%),
+    repeating-linear-gradient(6deg,
+      rgba(255,255,255,.10) 0 3%,
+      rgba(0,0,0,.14) 3% 6.5%,
+      rgba(255,255,255,.05) 6.5% 9%,
+      rgba(0,0,0,.08) 9% 13%)}
 
-/* протуберанцы */
-.sun__prom{inset:9%;border:2px solid transparent;opacity:.75;
-  -webkit-mask-image:linear-gradient(#000,#000);mask-image:linear-gradient(#000,#000)}
-.sun__prom--a{border-top-color:rgba(255,150,90,.75);transform:rotate(-28deg) scale(1.06);
-  filter:blur(1px);animation:sunBreath 9s ease-in-out infinite}
-.sun__prom--b{border-left-color:rgba(255,120,70,.6);transform:rotate(52deg) scale(1.1);
-  filter:blur(1.5px);animation:sunBreath 11s ease-in-out infinite reverse}
+/* облачная рябь: шум по порогу, медленно едет по диску */
+.orb__clouds{inset:-30% -60%;opacity:.30;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='.012 .06' numOctaves='4' seed='9'/><feColorMatrix type='saturate' values='0'/></filter><rect width='320' height='320' filter='url(%23c)'/></svg>");
+  background-size:60% 60%;animation:orbDrift 46s linear infinite}
 
-.sun__cap{position:static;justify-self:center;align-self:end;transform:translateY(2.6em);
+/* большое пятно-шторм с закруткой */
+.orb__storm{left:18%;top:52%;width:34%;height:19%;border-radius:50%;
+  transform:rotate(-8deg);
+  background:
+    radial-gradient(ellipse at 40% 40%,rgba(232,190,160,.55),transparent 46%),
+    radial-gradient(ellipse at 42% 42%,rgba(201,138,94,.85),rgba(150,84,52,.55) 55%,transparent 78%);
+  box-shadow:0 0 18px rgba(201,138,94,.35);opacity:.85}
+/* вторая буря, поменьше и в другом поясе: одна на диске выглядит наклейкой */
+.orb__storm::after{content:"";position:absolute;left:172%;top:-190%;width:52%;height:34%;
+  border-radius:50%;transform:rotate(6deg);
+  background:radial-gradient(ellipse at 45% 45%,rgba(226,206,180,.55),rgba(170,150,128,.30) 58%,transparent 80%);
+  opacity:.8}
+
+/* полярные шапки */
+.orb__caps{inset:0;
+  background:
+    radial-gradient(ellipse 62% 16% at 50% 2%,rgba(226,240,250,.5),transparent 70%),
+    radial-gradient(ellipse 54% 13% at 50% 99%,rgba(226,240,250,.35),transparent 70%)}
+
+/* терминатор: ночная сторона и потемнение к краю */
+.orb__night{inset:0;
+  background:
+    radial-gradient(circle at 34% 30%,transparent 40%,rgba(3,7,14,.55) 78%,rgba(2,4,9,.88) 100%),
+    linear-gradient(108deg,transparent 42%,rgba(2,5,11,.72) 88%)}
+
+/* краевая подсветка атмосферы */
+.orb__rim{inset:0;border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(153,205,236,.45), inset 6px 8px 26px -14px rgba(180,225,255,.75)}
+
+/* спутник планеты */
+.orb__moon{width:5.5%;height:5.5%;border-radius:50%;left:8%;top:22%;
+  background:radial-gradient(circle at 34% 32%,#C9D6E2,#6C7B8B 62%,#232C38);
+  box-shadow:0 0 10px rgba(150,190,220,.35);
+  animation:orbMoon 26s linear infinite}
+
+.orb__cap{position:static;justify-self:center;align-self:end;transform:translateY(2.4em);
   font-family:var(--mono);font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;
   color:var(--slate-2);white-space:nowrap}
 
-@keyframes sunSpin{to{transform:rotate(360deg)}}
-@keyframes sunBreath{0%,100%{opacity:.85;transform:scale(1)}50%{opacity:1;transform:scale(1.03)}}
-@media (max-width:1000px){ .sun{display:none} }
-@media (prefers-reduced-motion:reduce){ .sun *{animation:none !important} }
+@keyframes orbBreath{0%,100%{opacity:.85;transform:scale(1)}50%{opacity:1;transform:scale(1.025)}}
+@keyframes orbDrift{to{transform:translateX(33%)}}
+@keyframes orbMoon{
+  0%   {transform:translate(0,0) scale(1)}
+  25%  {transform:translate(300%,190%) scale(.85)}
+  50%  {transform:translate(560%,470%) scale(.7)}
+  75%  {transform:translate(240%,690%) scale(.9)}
+  100% {transform:translate(0,0) scale(1)}
+}
+@media (max-width:1000px){ .orb{display:none} }
+@media (prefers-reduced-motion:reduce){ .orb *{animation:none !important} }
 
 /* --- точки разделов справа --- */
 .dots{position:fixed;z-index:70;top:50%;transform:translateY(-50%);
@@ -731,6 +831,34 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
 .dots__i.on .lbl{opacity:1;transform:none;color:var(--graphite)}
 body.bp .dots__i .pt{border-radius:1px}
 @media (max-width:900px){ .dots{display:none} }
+
+/* --- космический перелив в заголовках --- */
+/* Градиент клипается по тексту, а текст живёт в самых глубоких узлах: SplitText
+   раскладывает заголовок по .ch, строки секций — по .shline. Фон родителя до этих
+   букв не доходит, поэтому перелив висит на них. Волну даёт отрицательный
+   animation-delay, его расставляет JS после нарезки. */
+:root{
+  --shimmer:linear-gradient(100deg,
+    #E9F1F7 0%, #E9F1F7 24%,
+    #63CDF2 38%, #BFE6F7 47%,
+    #F2A88A 57%,
+    #E9F1F7 72%, #E9F1F7 100%);
+}
+.hero__title .ch, h2 .shline{
+  background-image:var(--shimmer);
+  background-size:300% 100%;
+  background-position:0% 50%;
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
+  animation:shimmer 7s linear infinite}
+@keyframes shimmer{to{background-position:300% 50%}}
+/* акценты внутри строки красятся сами: перелив им не наследуется */
+h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
+  background:none;-webkit-text-fill-color:currentColor}
+@media (prefers-reduced-motion:reduce){
+  .hero__title .ch, h2 .shline{animation:none;background-position:22% 50%}
+}
 </style>
 <script>document.documentElement.classList.add('js');</script>
 </head>
@@ -793,17 +921,20 @@ body.bp .dots__i .pt{border-radius:1px}
         <p class="hero__hint rv d4">Отвечаю <kbd>в тот же день</kbd> · сборка <kbd>до 7 дней</kbd> · мелкие правки первый месяц бесплатно</p>
       </div>
 
-      <div class="sun c9-13 rv d2" id="heroSun" data-speed="0.94" data-lag="0.08" aria-hidden="true">
-        <div class="sun__corona"></div>
-        <div class="sun__flare"></div>
-        <div class="sun__disc">
-          <div class="sun__grain"></div>
-          <div class="sun__spots"></div>
-          <div class="sun__limb"></div>
+      <div class="orb c9-13 rv d2" id="heroOrb" data-speed="0.94" data-lag="0.08" aria-hidden="true">
+        <div class="orb__glow"></div>
+        <div class="orb__ring orb__ring--back"></div>
+        <div class="orb__body">
+          <div class="orb__bands"></div>
+          <div class="orb__clouds"></div>
+          <div class="orb__storm"></div>
+          <div class="orb__caps"></div>
+          <div class="orb__night"></div>
+          <div class="orb__rim"></div>
         </div>
-        <div class="sun__prom sun__prom--a"></div>
-        <div class="sun__prom sun__prom--b"></div>
-        <span class="sun__cap">G2V · источник света сцены</span>
+        <div class="orb__ring orb__ring--front"></div>
+        <div class="orb__moon"></div>
+        <span class="orb__cap">HD 15000 b · газовый гигант</span>
       </div>
     </div>
   </section>
@@ -897,12 +1028,12 @@ body.bp .dots__i .pt{border-radius:1px}
         </div>
 
         <ol class="xpl__list" id="xplList">
-          <li class="xpl__item" data-l="0"><span class="n">Слой 01</span><h3>Оффер и цена</h3><p>Имя, услуга и сумма в первом экране. Без вилок и «от».</p></li>
+          <li class="xpl__item" data-l="0"><span class="n">Слой 01</span><h3>Оффер и цена</h3><p>Услуга и сумма видны сразу, до первой прокрутки. Без вилок и «от».</p></li>
           <li class="xpl__item" data-l="1"><span class="n">Слой 02</span><h3>Сетка 12 колонок</h3><p>Каждый блок сидит на общей сетке. Колонки, размерные линии и роли блоков видно прямо на странице.</p></li>
           <li class="xpl__item" data-l="2"><span class="n">Слой 03</span><h3>Типографика</h3><p>Три гарнитуры и жёсткая иерархия: заголовок, текст, техническая подпись.</p></li>
           <li class="xpl__item" data-l="3"><span class="n">Слой 04</span><h3>Механики</h3><p>Анимации привязаны к прокрутке и курсору. Стоят там, где помогают читать, а не там, где заметнее.</p></li>
           <li class="xpl__item" data-l="4"><span class="n">Слой 05</span><h3>Формы и аналитика</h3><p>Заявка уходит в Telegram, цель фиксируется в метрике.</p></li>
-          <li class="xpl__item" data-l="5"><span class="n">Слой 06</span><h3>Код</h3><p>Чистый код без конструкторов и сборщиков. Ctrl+U — исходник открыт, читайте.</p></li>
+          <li class="xpl__item" data-l="5"><span class="n">Слой 06</span><h3>Код</h3><p>Ctrl+U — и перед вами тот же исходник, с которым работал я. Ни сборщиков, ни сгенерированной каши.</p></li>
         </ol>
       </div>
 
@@ -972,8 +1103,8 @@ body.bp .dots__i .pt{border-radius:1px}
         <div class="card rv d1"><span class="code">TXT</span><h3>Оффер и тексты</h3><p>Формулирую, что вы продаёте и почему это стоит своих денег. Заголовки, буллеты, подписи к кнопкам, ответы на возражения — пишу сам, с ваших слов, без воды и «динамично развивающейся компании».</p><span class="card__note">Отдаю: тексты всех блоков</span><div class="rule"></div></div>
         <div class="card rv d2"><span class="code">DEV</span><h3>Вёрстка и скорость</h3><p>Чистый код без конструкторов. Одинаково работает на телефоне, планшете и десктопе, открывается быстро на медленной сети и не разваливается при увеличении шрифта.</p><span class="card__note">Отдаю: исходники без сборщиков</span><div class="rule"></div></div>
         <div class="card rv"><span class="code">MOT</span><h3>Анимации</h3><p>Те самые механики из блока выше. Ставлю их там, где они помогают читать: ведут взгляд, отделяют разделы, подсказывают, что кликается. Там, где мешают, — не ставлю.</p><span class="card__note">Отдаю: движение, а не мельтешение</span><div class="rule"></div></div>
-        <div class="card rv d1"><span class="code">ANL</span><h3>Формы и аналитика</h3><p>Заявки приходят вам в Telegram или на почту — без чужих личных кабинетов и подписок. Метрика с настроенными целями: видно, откуда пришёл человек и на каком блоке он ушёл.</p><span class="card__note">Отдаю: цели, события, доступы</span><div class="rule"></div></div>
-        <div class="card rv d2"><span class="code">OPS</span><h3>Запуск</h3><p>Публикую на вашем домене и хостинге, подключаю SSL, проверяю на живых устройствах. Отдаю исходники и короткую инструкцию, как править тексты самому, без меня и без вёрстки.</p><span class="card__note">Отдаю: рабочую страницу и доступы</span><div class="rule"></div></div>
+        <div class="card rv d1"><span class="code">ANL</span><h3>Формы и аналитика</h3><p>Заявка падает прямо вам — в мессенджер или почтой, без чужих личных кабинетов и подписок. Аналитика с целями показывает, откуда пришёл человек и на каком блоке ушёл.</p><span class="card__note">Отдаю: цели, события, доступы</span><div class="rule"></div></div>
+        <div class="card rv d2"><span class="code">OPS</span><h3>Запуск</h3><p>Выкладываю на вашу площадку, подключаю SSL, проверяю на живых устройствах. Отдаю исходники и короткую инструкцию, как править тексты самому, без меня и без вёрстки.</p><span class="card__note">Отдаю: рабочую страницу и доступы</span><div class="rule"></div></div>
       </div>
     </div>
   </section>
@@ -1008,7 +1139,7 @@ body.bp .dots__i .pt{border-radius:1px}
       <div class="price">
         <div class="rv">
           <span class="price__fig" data-lag="0.06"><span class="cnt" data-target="15000">15 000</span><span class="price__cur">₽</span></span>
-          <p class="price__note">Фикс за лендинг под ключ. Без пакетов, без доплат за блоки, без «плюс хостинг отдельно».</p>
+          <p class="price__note">Одна сумма за всё. Ни пакетов, ни надбавок за лишний экран, ни «плюс хостинг отдельно».</p>
           <div class="price__cta"><a href="#contact" class="btn btn--lg btn--solid"><span>Обсудить проект</span></a></div>
         </div>
         <ul class="price__list rv d1">
@@ -1041,7 +1172,7 @@ body.bp .dots__i .pt{border-radius:1px}
       </div>
       <aside class="ask c9-13 rv d3">
         <h3>Вопроса нет в списке?</h3>
-        <p>Спросите напрямую — отвечу текстом в тот же день, без брифа и созвона.</p>
+        <p>Спросите напрямую — отвечу текстом, без брифа и созвона.</p>
         <a class="btn btn--ghost" href="https://t.me/NovikovCore" target="_blank" rel="noopener"><span>Спросить в Telegram</span></a>
       </aside>
     </div>
@@ -1052,7 +1183,7 @@ body.bp .dots__i .pt{border-radius:1px}
     <div class="wrap">
       <span class="eyebrow rv">Начнём</span>
       <h2 class="c1-9">Расскажите про проект — отвечу в тот же день</h2>
-      <p class="lead c1-7">Напишите в Telegram или позвоните. Задам пару вопросов и скажу, берусь ли и в какой срок. Если задача не моя — скажу прямо.</p>
+      <p class="lead c1-7">Напишите в Telegram или позвоните. Задам пару вопросов и назову срок — или честно откажусь, если задача не моя.</p>
 
       <div class="c1-8">
         <div class="compose">
@@ -1143,14 +1274,24 @@ body.bp .dots__i .pt{border-radius:1px}
     es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
   }, {threshold:0.01, rootMargin:'0px 0px -4% 0px'});
   document.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
-  /* страховка: если IntersectionObserver не сработал, показать всё после загрузки */
-  window.addEventListener('load', function(){
-    setTimeout(function(){
-      document.querySelectorAll('.rv:not(.in)').forEach(function(el){
-        if(el.getBoundingClientRect().top < window.innerHeight*0.92) el.classList.add('in');
-      });
-    }, 400);
-  });
+
+  /* ScrollSmoother двигает страницу трансформом, и при быстрой прокрутке
+     IntersectionObserver успевает не всегда: блок остаётся непоказанным.
+     Поэтому на каждом кадре досматриваем очередь — она только укорачивается. */
+  var pending = [].slice.call(document.querySelectorAll('.rv'));
+  function sweepReveal(){
+    if(!pending.length) return;
+    var vh = window.innerHeight, rest = [];
+    for(var i = 0; i < pending.length; i++){
+      var el = pending[i];
+      if(el.classList.contains('in')) continue;
+      var r = el.getBoundingClientRect();
+      if(r.top < vh * 0.94 && r.bottom > -vh * 0.5){ el.classList.add('in'); io.unobserve(el); }
+      else rest.push(el);
+    }
+    pending = rest;
+  }
+  window.addEventListener('load', function(){ setTimeout(sweepReveal, 400); });
 
   /* ---------- размерная линия: реальная ширина колонки ---------- */
   var dimVal = document.getElementById('dimVal'), dimBox = document.getElementById('dim');
@@ -1197,22 +1338,59 @@ body.bp .dots__i .pt{border-radius:1px}
       skyStars = document.getElementById('skyStars'),
       skyNeb = document.getElementById('skyNeb'),
       planets = [
-        [document.getElementById('planetA'), 0.16],
-        [document.getElementById('planetB'), 0.32],
-        [document.getElementById('planetC'), 0.09]
+        [document.getElementById('planetA'), 0.16, 1],
+        [document.getElementById('planetB'), 0.32, 1],
+        [document.getElementById('planetC'), 0.09, 1]
       ];
+
+  /* Базовую непрозрачность держит CSS — там же живут медиазапросы. JS пишет
+     opacity инлайном и затирает её, поэтому исходное значение снимаем сами:
+     на миг убираем инлайн и читаем вычисленное. Пересчитываем на resize —
+     иначе телефонные значения не подхватятся при повороте экрана. */
+  function readBaseOps(){
+    for(var i = 0; i < planets.length; i++){
+      var el = planets[i][0];
+      if(!el) continue;
+      var prev = el.style.opacity;
+      el.style.opacity = '';
+      planets[i][2] = parseFloat(getComputedStyle(el).opacity) || 1;
+      el.style.opacity = prev;
+    }
+  }
+  readBaseOps();
+  var opTimer = 0;
+  window.addEventListener('resize', function(){
+    clearTimeout(opTimer);
+    opTimer = setTimeout(readBaseOps, 180);
+  });
+
+  /* Диск, наполовину уехавший за край, читается как обрезок, а не как планета.
+     Поэтому у края гасим: планета растворяется раньше, чем её срежет кромка. */
+  function planetFade(el, top, vh){
+    var h = el.offsetHeight || 1,
+        gap = Math.min(top, vh - (top + h)),  /* запас до ближайшей кромки */
+        k = gap / (h * 0.24);                 /* к нулю приходим ровно на кромке */
+    return k < 0 ? 0 : (k > 1 ? 1 : k);
+  }
+
   function sky(st){
     if(skyDust)  skyDust.style.transform  = 'translate3d(0,' + (-st * 0.035) + 'px,0)';
     if(skyStars) skyStars.style.transform = 'translate3d(0,' + (-st * 0.075) + 'px,0)';
     if(skyNeb)   skyNeb.style.transform   = 'translate3d(0,' + (-st * 0.02) + 'px,0)';
+    var vh = window.innerHeight;
     for(var i=0;i<planets.length;i++){
-      if(planets[i][0]) planets[i][0].style.transform = 'translate3d(0,' + (-st * planets[i][1]) + 'px,0)';
+      var el = planets[i][0];
+      if(!el) continue;
+      var y = -st * planets[i][1];
+      el.style.transform = 'translate3d(0,' + y + 'px,0)';
+      el.style.opacity = (planets[i][2] * planetFade(el, el.offsetTop + y, vh)).toFixed(3);
     }
   }
 
   function onScroll(){
     var st = scrollPos();
     sky(st);
+    sweepReveal();
     fill.style.transform = 'scaleY(' + (docH>0 ? Math.min(st/docH,1) : 0) + ')';
     nav.classList.toggle('scrolled', st>10);
     document.body.classList.toggle('dock-on', st > window.innerHeight*0.85);
@@ -1330,6 +1508,15 @@ body.bp .dots__i .pt{border-radius:1px}
       ScrollTrigger.addEventListener('refresh', function(){ measure(); onScroll(); });
     }
 
+    /* Перелив — CSS-анимация на каждом узле. Чтобы это была волна, а не
+       общая пульсация, разводим фазы отрицательной задержкой. */
+    function shimmerWave(nodes, step){
+      if(!nodes) return;
+      for(var i=0;i<nodes.length;i++){
+        nodes[i].style.animationDelay = (-i * step).toFixed(3) + 's';
+      }
+    }
+
     /* ---------- имя: буквы выходят из-под маски ---------- */
     if(!heroShown && window.SplitText){
       clearTimeout(heroTimer);
@@ -1337,6 +1524,7 @@ body.bp .dots__i .pt{border-radius:1px}
       gsap.registerPlugin(SplitText);
       heroName.style.opacity = '';
       var split = SplitText.create(heroName, {type:'chars,lines', mask:'lines', charsClass:'ch'});
+      shimmerWave(split.chars, 0.055);
       gsap.set(heroName, {opacity:1});
       gsap.from(split.chars, {
         yPercent:118, duration:1, ease:'power4.out', stagger:{each:.03, from:'start'}
@@ -1369,8 +1557,9 @@ body.bp .dots__i .pt{border-radius:1px}
       gsap.registerPlugin(SplitText);
       gsap.utils.toArray('section h2:not(.no-split)').forEach(function(h){
         SplitText.create(h, {
-          type:'lines', mask:'lines', autoSplit:true,
+          type:'lines', mask:'lines', autoSplit:true, linesClass:'shline',
           onSplit:function(self){
+            shimmerWave(self.lines, 0.45);
             return gsap.from(self.lines, {
               yPercent:110, duration:.9, ease:'power3.out', stagger:.08,
               scrollTrigger:{trigger:h, start:'top 88%', once:true}

@@ -187,26 +187,9 @@ html:not(.js) .cards .card.rv > *{opacity:1;transform:none}
 /* сетки и координатного курсора больше нет: колонки остались настоящими,
    но линии по ним не рисуются — страница читается, а не чертится */
 
-section[data-role]::after{content:attr(data-role);position:absolute;top:calc(clamp(64px,7vw,116px) - 8px);right:var(--gut);z-index:56;
-  font-family:var(--mono);font-size:.63rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--pencil);background:var(--paper);padding:4px 8px;border:1px solid rgba(200,57,27,.45);border-radius:2px;
-  opacity:0;transform:translateY(-5px);transition:opacity .4s var(--ease),transform .4s var(--ease);pointer-events:none}
-body.bp section[data-role]::after{opacity:1;transform:none}
-.hero[data-role]::after{top:clamp(112px,15vh,164px)}
-.spec[data-role]::after{top:-11px}
-.contact[data-role]::after{color:var(--pencil);background:var(--deep);border-color:rgba(242,119,90,.45)}
-/* на узком экране подпись роли ложилась на надзаголовок — убираем целиком */
-@media (max-width:760px){ section[data-role]::after{display:none} }
-
-.ann{position:absolute;z-index:7;font-family:var(--mono);font-size:.64rem;font-weight:500;letter-spacing:.07em;
-  text-transform:uppercase;color:var(--pencil);white-space:nowrap;pointer-events:none;opacity:0;transform:translateY(-4px);
-  transition:opacity .45s var(--ease),transform .45s var(--ease)}
-.ann::before{content:"";position:absolute;background:currentColor;opacity:.55;left:6px;top:-16px;width:1px;height:13px}
+/* Подписи ролей, выноски и размерная линия сняты по просьбе владельца:
+   страница объясняет себя содержанием, а не пометками на полях. */
 .anchor{position:relative}
-.ann--under{left:2px;bottom:-24px}
-body.bp .ann{opacity:1;transform:none}
-.ann--live{opacity:.85;color:#8E2E17;transform:none}
-@media (max-width:1100px){ .ann{display:none} }
 
 /* ============================================================
    01 ОФФЕР
@@ -237,15 +220,6 @@ html:not(.js) .hero__offer u::after{transform:none}
 @keyframes draw{to{transform:scaleX(1)}}
 
 /* размерная линия: показывает реальную ширину колонки в пикселях */
-.dim{position:relative;height:26px;margin-top:20px;margin-bottom:12px;color:var(--pencil);opacity:.85}
-.dim__line{position:absolute;left:0;right:0;top:12px;height:1px;background:currentColor;
-  transform:scaleX(0);transform-origin:left;animation:draw .9s var(--ease) 1.25s forwards}
-html:not(.js) .dim__line{transform:none}
-.dim__line::before,.dim__line::after{content:"";position:absolute;top:-4px;width:1px;height:9px;background:currentColor}
-.dim__line::before{left:0} .dim__line::after{right:0}
-.dim__val{position:absolute;left:50%;top:1px;transform:translateX(-50%);background:var(--paper);padding:0 10px;
-  font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;white-space:nowrap}
-@media (max-width:700px){ .dim{display:none} }
 
 .hero__sub{color:var(--slate);font-size:clamp(1.02rem,1.5vw,1.18rem);max-width:46ch;margin:22px 0 0}
 @media (min-width:701px){ .hero__sub{margin-top:38px} }
@@ -633,60 +607,162 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
 .sky__dust{inset:-10% 0;background-repeat:repeat;background-size:520px 520px;opacity:.8;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='620'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='1' seed='11'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  3.4 0 0 0 -2.52'/></filter><rect width='620' height='620' filter='url(%23s)'/></svg>")}
 
-/* крупные звёзды: несколько слоёв точек с разной плотностью */
-.sky__stars{inset:-14% 0;background-repeat:repeat;background-size:520px 520px,380px 380px,290px 290px;opacity:.9;
+/* Крупные звёзды: шесть слоёв разного размера, цвета и шага плитки.
+   Одна плитка читается как обои — разные шаги дают неповторяющийся рисунок. */
+.sky__stars{inset:-14% 0;background-repeat:repeat;opacity:.95;
+  background-size:520px 520px,380px 380px,290px 290px,610px 610px,455px 455px,337px 337px;
   background-image:
-    radial-gradient(1.6px 1.6px at 62px 84px,rgba(233,241,247,.95),transparent 60%),
-    radial-gradient(1.2px 1.2px at 208px 302px,rgba(99,205,242,.85),transparent 60%),
-    radial-gradient(1.1px 1.1px at 118px 47px,rgba(233,241,247,.7),transparent 60%)}
+    radial-gradient(1.7px 1.7px at 62px 84px,rgba(240,248,255,.98),transparent 60%),
+    radial-gradient(1.2px 1.2px at 208px 302px,rgba(99,205,242,.88),transparent 60%),
+    radial-gradient(1.1px 1.1px at 118px 47px,rgba(233,241,247,.72),transparent 60%),
+    radial-gradient(2.1px 2.1px at 431px 168px,rgba(255,246,236,.85),transparent 58%),
+    radial-gradient(0.9px 0.9px at 96px 391px,rgba(200,224,240,.6),transparent 62%),
+    radial-gradient(1.0px 1.0px at 271px 129px,rgba(233,241,247,.55),transparent 62%)}
+
+/* Мерцание: отдельный редкий слой, анимируем только прозрачность —
+   это единственное, что компоновщик тянет без перерисовки. */
+.sky__twinkle{inset:-14% 0;background-repeat:repeat;
+  background-size:740px 740px,560px 560px;
+  background-image:
+    radial-gradient(2.3px 2.3px at 190px 240px,rgba(255,252,244,.95),transparent 56%),
+    radial-gradient(1.8px 1.8px at 412px 96px,rgba(120,212,246,.9),transparent 58%);
+  animation:twinkle 5.5s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.25}to{opacity:.95}}
+
+/* Галактическая полоса: наклонная лента пыли поперёк неба. Держим очень
+   слабой — она задаёт глубину, но не должна спорить с текстом. */
+.sky__band{inset:-30% -30%;opacity:.5;transform-origin:50% 50%;
+  background:
+    linear-gradient(102deg,transparent 38%,rgba(180,214,238,.05) 46%,rgba(214,234,248,.09) 50%,
+      rgba(180,214,238,.05) 54%,transparent 62%),
+    linear-gradient(102deg,transparent 43%,rgba(120,190,226,.05) 50%,transparent 57%)}
 
 /* туманность: очень мягкая, иначе текст теряет контраст */
-.sky__neb{inset:-20% -10%;opacity:.75;
+.sky__neb{inset:-20% -10%;opacity:.85;
   background:
-    radial-gradient(58% 40% at 76% 12%,rgba(47,159,208,.16),transparent 64%),
-    radial-gradient(46% 34% at 12% 62%,rgba(99,205,242,.10),transparent 66%),
-    radial-gradient(52% 38% at 58% 96%,rgba(242,119,90,.09),transparent 62%)}
+    radial-gradient(58% 40% at 76% 12%,rgba(47,159,208,.18),transparent 64%),
+    radial-gradient(40% 30% at 82% 20%,rgba(99,205,242,.10),transparent 60%),
+    radial-gradient(46% 34% at 12% 62%,rgba(99,205,242,.12),transparent 66%),
+    radial-gradient(34% 26% at 6% 54%,rgba(47,159,208,.08),transparent 62%),
+    radial-gradient(52% 38% at 58% 96%,rgba(242,119,90,.10),transparent 62%),
+    radial-gradient(30% 22% at 34% 34%,rgba(233,241,247,.045),transparent 66%)}
 
-/* планета: диск с поясами, шапками, терминатором и краевой подсветкой */
-/* Диск собран слоями: шапки, широтные пояса двух частот, блик подсвета,
-   общий шар. Слоёв больше, чем видно с ходу, — именно из них берётся объём. */
-.planet{border-radius:50%;overflow:hidden;
-  background:
-    radial-gradient(ellipse 62% 16% at 50% 2%,rgba(232,244,252,.34),transparent 74%),
-    radial-gradient(ellipse 54% 13% at 50% 99%,rgba(232,244,252,.26),transparent 74%),
-    repeating-linear-gradient(7deg,rgba(255,255,255,.055) 0 2.6%,rgba(0,0,0,.075) 2.6% 6.1%),
-    repeating-linear-gradient(7deg,rgba(255,255,255,.030) 0 0.9%,rgba(0,0,0,.035) 0.9% 2.1%),
-    radial-gradient(ellipse 34% 9% at 66% 62%,rgba(226,168,124,.30),transparent 70%),
-    radial-gradient(ellipse 22% 6% at 28% 41%,rgba(226,206,180,.18),transparent 72%),
-    radial-gradient(circle at 32% 28%,rgba(255,255,255,.12),transparent 42%),
-    radial-gradient(circle at 30% 30%,var(--p-hi,#2C4A63) 0%,var(--p-lo,#0B1622) 62%,#05080F 100%);
-  box-shadow:inset -18px -10px 44px rgba(0,0,0,.7), 0 0 70px -12px var(--p-glow,rgba(47,159,208,.35))}
-/* терминатор и ободок атмосферы */
-.planet::after{content:"";position:absolute;inset:0;border-radius:50%;
-  background:linear-gradient(112deg,transparent 40%,rgba(2,5,11,.62) 86%);
-  box-shadow:inset 0 0 0 1px rgba(233,241,247,.10), inset 8px 10px 30px -16px rgba(170,220,255,.6)}
-/* облачная рябь по диску */
-.planet::before{content:"";position:absolute;inset:-20% -50%;opacity:.22;mix-blend-mode:soft-light;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.014 .07' numOctaves='3' seed='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23p)'/></svg>");
-  background-size:55% 55%;animation:orbDrift 70s linear infinite}
-/* ни одна планета не уходит за край: диск виден диском, а не срезом */
-/* Стояла ровно за планетой с кольцами и спорила с ней. Уводим ниже и влево:
-   в первом экране остаётся одна планета, вторая встречается на прокрутке. */
-.planet--a{width:min(24vw,270px);aspect-ratio:1;left:4vw;top:104vh;
-  --p-hi:#27506B;--p-lo:#0A1826;--p-glow:rgba(47,159,208,.32);opacity:.7;transition:opacity .18s linear}
-/* разводим по сторонам: три планеты слева стоят стопкой и спорят друг с другом */
-.planet--b{width:min(17vw,190px);aspect-ratio:1;right:6vw;top:150vh;
-  --p-hi:#5A3A34;--p-lo:#180F12;--p-glow:rgba(242,119,90,.28);opacity:.8;transition:opacity .18s linear}
-.planet--c{width:min(42vw,470px);aspect-ratio:1;left:50%;margin-left:min(-21vw,-235px);top:240vh;
-  --p-hi:#22485F;--p-lo:#070E18;--p-glow:rgba(99,205,242,.22);opacity:.6;transition:opacity .18s linear}
-
-/* кольцо у второй планеты */
-.planet--b::before{content:"";position:absolute;left:-34%;right:-34%;top:44%;height:14%;
-  border-radius:50%;border:1px solid rgba(242,119,90,.35);transform:rotate(-17deg);opacity:.8}
 
 /* На телефоне сцена узкая: три планеты разом лезут на спутника. Гасим. */
-@media (max-width:760px){ .sky__neb{opacity:.55} .planet--a{opacity:.26;width:34vw;left:4vw;top:112vh}
-  .planet--b{width:26vw;right:5vw;opacity:.4} .planet--c{opacity:.35;width:56vw;margin-left:-28vw} }
+/* --- планеты неба ---------------------------------------------------------
+   Каждая собрана слоями: свечение, кольца, диск с поясами и вихрями, ночная
+   сторона, ободок атмосферы, луна. Одним градиентом шар не читается — объём
+   даёт именно набор слоёв, включая те, что поодиночке почти не видны.
+   Характер у всех трёх разный: газовый гигант, камень, ледяной с кольцами. */
+.planet{aspect-ratio:1;isolation:isolate}
+.planet>*{position:absolute}
+
+.planet__glow{inset:-15%;border-radius:50%;
+  background:radial-gradient(circle,transparent 60%,var(--p-glow,rgba(47,159,208,.3)) 69%,transparent 88%);
+  filter:blur(5px);opacity:.75}
+
+.planet__disc{inset:0;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 32% 28%,var(--p-hi,#2C4A63) 0%,var(--p-mid,#17304A) 42%,
+             var(--p-lo,#0B1622) 74%,#04070E 100%);
+  box-shadow:0 0 62px -16px var(--p-glow,rgba(47,159,208,.35))}
+.planet__disc>*{position:absolute;inset:0}
+
+/* широтные пояса в две частоты: одной мало, полосы читаются как обои */
+.planet__bands{opacity:.6;mix-blend-mode:overlay;
+  background:
+    repeating-linear-gradient(var(--p-tilt,7deg),rgba(255,255,255,.045) 0 .85%,rgba(0,0,0,.055) .85% 1.8%),
+    repeating-linear-gradient(var(--p-tilt,7deg),
+      rgba(255,255,255,.10) 0 2.7%,rgba(0,0,0,.13) 2.7% 5.8%,
+      rgba(255,255,255,.05) 5.8% 8.4%,rgba(0,0,0,.08) 8.4% 12.2%)}
+
+/* облачная рябь: шум по порогу, медленно едет по диску */
+.planet__clouds{inset:-24% -56%;opacity:.26;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.014 .07' numOctaves='3' seed='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23p)'/></svg>");
+  background-size:52% 52%;animation:orbDrift 84s linear infinite}
+
+/* вихри: крупный и мелкий, вытянуты по параллели */
+.planet__storm{
+  background:
+    radial-gradient(ellipse 17% 5% at 64% 60%,var(--p-storm,rgba(226,168,124,.5)),transparent 68%),
+    radial-gradient(ellipse 9% 3% at 27% 40%,rgba(226,206,180,.26),transparent 70%),
+    radial-gradient(ellipse 6% 2.4% at 78% 33%,rgba(200,222,238,.2),transparent 72%)}
+
+/* полярные шапки */
+.planet__caps{
+  background:
+    radial-gradient(ellipse 62% 16% at 50% 1%,rgba(232,244,252,.4),transparent 74%),
+    radial-gradient(ellipse 54% 13% at 50% 99%,rgba(232,244,252,.3),transparent 74%)}
+
+/* терминатор: ночная сторона и потемнение к краю */
+.planet__night{
+  background:
+    radial-gradient(circle at 32% 28%,transparent 42%,rgba(3,7,14,.5) 78%,rgba(2,4,9,.9) 100%),
+    linear-gradient(112deg,transparent 40%,rgba(2,5,11,.64) 88%)}
+
+/* ободок атмосферы поверх всего */
+.planet__rim{inset:0;border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(170,215,245,.16), inset 7px 9px 26px -14px rgba(180,225,255,.7),
+             inset -18px -10px 44px rgba(0,0,0,.6)}
+
+/* кольца: задняя дуга уходит за диск, передняя ложится поверх */
+.planet__ring{left:-32%;right:-32%;top:40.5%;height:35%;border-radius:50%;
+  border:1px solid var(--p-ring,rgba(153,196,224,.42));
+  box-shadow:
+    inset 0 0 0 2px  rgba(176,214,238,.26),
+    inset 0 0 0 4px  rgba(120,160,190,.04),
+    inset 0 0 0 7px  rgba(186,220,242,.22),
+    inset 0 0 0 10px rgba(146,186,214,.12),
+    inset 0 0 0 11px rgba(90,120,150,.03),
+    inset 0 0 0 14px rgba(198,226,244,.15);
+  transform:rotate(var(--p-ringrot,-14deg))}
+.planet__ring--back{clip-path:inset(0 0 50% 0)}
+.planet__ring--front{clip-path:inset(50% 0 0 0);opacity:.85}
+
+/* луна: маленькая, но именно она задаёт масштаб планете */
+.planet__moon{width:5.5%;height:5.5%;border-radius:50%;left:6%;top:20%;
+  background:radial-gradient(circle at 34% 32%,#C9D6E2,#6C7B8B 60%,#232C38);
+  box-shadow:0 0 9px rgba(150,190,220,.3);
+  animation:plMoon 38s linear infinite}
+@keyframes plMoon{
+  0%  {transform:translate(0,0) scale(1)}
+  25% {transform:translate(1300%,760%) scale(.82)}
+  50% {transform:translate(1560%,1420%) scale(.7)}
+  75% {transform:translate(260%,1640%) scale(.88)}
+  100%{transform:translate(0,0) scale(1)}
+}
+
+/* 01 — газовый гигант: холодный, полосатый, с луной */
+.planet--a{width:min(24vw,270px);left:4vw;opacity:.7;transition:opacity .18s linear;
+  --p-hi:#4C87AF;--p-mid:#22506E;--p-lo:#0A1826;--p-glow:rgba(47,159,208,.32);
+  --p-storm:rgba(226,168,124,.42);--p-tilt:8deg}
+
+/* 02 — камень: без поясов, зато с кратерами и без атмосферной дымки */
+.planet--b{width:min(17vw,190px);right:12vw;opacity:.72;transition:opacity .18s linear;
+  --p-hi:#9A6A58;--p-mid:#4E2F27;--p-lo:#1C1114;--p-glow:rgba(242,119,90,.3);--p-tilt:0deg}
+.planet--b .planet__bands{opacity:.9;mix-blend-mode:overlay;
+  background:
+    radial-gradient(ellipse 10% 10% at 34% 30%,rgba(0,0,0,.62),rgba(255,236,220,.3) 60%,transparent 72%),
+    radial-gradient(ellipse 7% 7% at 62% 47%,rgba(0,0,0,.56),rgba(255,236,220,.26) 62%,transparent 74%),
+    radial-gradient(ellipse 5% 5% at 45% 68%,rgba(0,0,0,.52),rgba(255,236,220,.22) 64%,transparent 76%),
+    radial-gradient(ellipse 4% 4% at 72% 22%,rgba(0,0,0,.48),rgba(255,236,220,.22) 62%,transparent 76%),
+    radial-gradient(ellipse 3.4% 3.4% at 25% 56%,rgba(0,0,0,.46),rgba(255,236,220,.2) 64%,transparent 76%),
+    radial-gradient(ellipse 2.8% 2.8% at 55% 82%,rgba(0,0,0,.42),rgba(255,236,220,.16) 66%,transparent 78%),
+    radial-gradient(ellipse 2.2% 2.2% at 40% 44%,rgba(0,0,0,.38),transparent 72%),
+    radial-gradient(ellipse 1.8% 1.8% at 68% 64%,rgba(0,0,0,.34),transparent 74%),
+    radial-gradient(ellipse 1.5% 1.5% at 30% 74%,rgba(0,0,0,.3),transparent 74%)}
+.planet--b .planet__storm{background:none}
+.planet--b .planet__caps{opacity:.35}
+.planet--b .planet__rim{box-shadow:inset 0 0 0 1px rgba(226,180,150,.1),
+  inset -16px -9px 40px rgba(0,0,0,.66)}
+
+/* 03 — ледяной гигант с кольцами: самый дальний и самый крупный */
+.planet--c{width:min(34vw,380px);left:50%;margin-left:min(-17vw,-190px);opacity:.44;
+  transition:opacity .18s linear;
+  --p-hi:#5EA6C6;--p-mid:#245068;--p-lo:#08131F;--p-glow:rgba(99,205,242,.24);
+  --p-storm:rgba(200,226,240,.3);--p-tilt:-6deg;--p-ring:rgba(168,206,232,.4);--p-ringrot:9deg}
+
+@media (max-width:760px){ .sky__neb{opacity:.55} .planet--a{opacity:.3;width:36vw;left:4vw}
+  .planet--b{width:28vw;right:5vw;opacity:.42} .planet--c{opacity:.36;width:60vw;margin-left:-30vw} }
 @media (prefers-reduced-motion:reduce){ .sky>*{will-change:auto} }
 
 /* --- планета в первом экране --- */
@@ -798,9 +874,7 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
   box-shadow:0 0 10px rgba(150,190,220,.35);
   animation:orbMoon 26s linear infinite}
 
-.orb__cap{position:static;justify-self:center;align-self:end;transform:translateY(2.4em);
-  font-family:var(--mono);font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--slate-2);white-space:nowrap}
+
 
 @keyframes orbBreath{0%,100%{opacity:.85;transform:scale(1)}50%{opacity:1;transform:scale(1.025)}}
 @keyframes orbDrift{to{transform:translateX(33%)}}
@@ -868,11 +942,46 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 <nav class="dots" id="dots" aria-label="Разделы страницы"></nav>
 <div class="sky" id="sky" aria-hidden="true">
   <div class="sky__neb" id="skyNeb"></div>
+  <div class="sky__band" id="skyBand"></div>
   <div class="sky__dust" id="skyDust"></div>
   <div class="sky__stars" id="skyStars"></div>
-  <div class="planet planet--a" id="planetA"></div>
-  <div class="planet planet--b" id="planetB"></div>
-  <div class="planet planet--c" id="planetC"></div>
+  <div class="sky__twinkle" id="skyTwinkle"></div>
+  <div class="planet planet--a" id="planetA">
+    <div class="planet__glow"></div>
+    <div class="planet__disc">
+      <div class="planet__bands"></div>
+      <div class="planet__clouds"></div>
+      <div class="planet__storm"></div>
+      <div class="planet__caps"></div>
+      <div class="planet__night"></div>
+    </div>
+    <div class="planet__rim"></div>
+    <div class="planet__moon"></div>
+  </div>
+  <div class="planet planet--b" id="planetB">
+    <div class="planet__glow"></div>
+    <div class="planet__disc">
+      <div class="planet__bands"></div>
+      <div class="planet__clouds"></div>
+      <div class="planet__storm"></div>
+      <div class="planet__caps"></div>
+      <div class="planet__night"></div>
+    </div>
+    <div class="planet__rim"></div>
+  </div>
+  <div class="planet planet--c" id="planetC">
+    <div class="planet__glow"></div>
+    <div class="planet__ring planet__ring--back"></div>
+    <div class="planet__disc">
+      <div class="planet__bands"></div>
+      <div class="planet__clouds"></div>
+      <div class="planet__storm"></div>
+      <div class="planet__caps"></div>
+      <div class="planet__night"></div>
+    </div>
+    <div class="planet__ring planet__ring--front"></div>
+    <div class="planet__rim"></div>
+  </div>
 </div>
 
 <div class="paper-tex" aria-hidden="true"></div>
@@ -901,15 +1010,13 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 <main id="top">
 
   <!-- ========== 01 ОФФЕР ========== -->
-  <section class="hero" id="hero" data-idx="01 / ОФФЕР" data-theme="light" data-role="01 · кто я, что делаю, сколько стоит">
+  <section class="hero" id="hero" data-idx="01 / ОФФЕР" data-theme="light">
     <div class="wrap">
       <div class="c1-8" id="heroCol">
         <p class="hero__name"><i aria-hidden="true"></i>дизайн и код · лендинги под ключ</p>
         <div class="anchor">
           <h1 class="hero__title" id="heroName"><span class="row">Делаю лендинги</span><span class="row">в кратчайшие сроки</span></h1>
           <p class="hero__offer">Соберу вам лендинг за <u>15 000 ₽</u></p>
-          <div class="dim" id="dim" aria-hidden="true"><div class="dim__line"></div><div class="dim__val" id="dimVal">—</div></div>
-          <span class="ann ann--under ann--live" aria-hidden="true">Цена в первом экране · скрывать нечего</span>
         </div>
         <p class="hero__sub rv d3">Меня зовут <b>Артём Новиков</b>, я дизайнер и разработчик лендингов. Одна услуга, одна цена, без пакетов и доплат за блоки. <b>Портфолио — эта страница.</b> Всё, что вы на ней видите и трогаете, я спроектировал и написал руками.</p>
         <div class="anchor">
@@ -917,7 +1024,6 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
             <a href="#contact" class="btn btn--lg btn--solid"><span>Обсудить проект</span></a>
             <a href="#lab" class="btn btn--lg btn--ghost"><span>Потрогать механики</span></a>
           </div>
-          <span class="ann ann--under" aria-hidden="true">Целевое действие · выше линии сгиба</span>
         </div>
         <p class="hero__hint rv d4">Отвечаю <kbd>в тот же день</kbd> · сборка <kbd>до 7 дней</kbd> · мелкие правки первый месяц бесплатно</p>
       </div>
@@ -935,13 +1041,12 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
         </div>
         <div class="orb__ring orb__ring--front"></div>
         <div class="orb__moon"></div>
-        <span class="orb__cap">HD 15000 b · газовый гигант</span>
       </div>
     </div>
   </section>
 
   <!-- ========== 02 РАМКИ ========== -->
-  <section class="spec" data-idx="02 / РАМКИ" data-theme="light" data-role="02 · рамки сделки">
+  <section class="spec" data-idx="02 / РАМКИ" data-theme="light">
     <div class="wrap">
       <h2 class="sr no-split">Рамки сделки</h2>
       <dl class="spec__in">
@@ -954,7 +1059,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   </section>
 
   <!-- ========== 03 МАНИФЕСТ ========== -->
-  <section class="plate pad" id="proof" data-idx="03 / ДОКАЗАТЕЛЬСТВО" data-theme="light" data-role="03 · снимает «покажите работы»">
+  <section class="plate pad" id="proof" data-idx="03 / ДОКАЗАТЕЛЬСТВО" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Доказательство</span>
       <h2 class="manifesto c1-9">Кейсов не будет.<br>Вы <span>уже внутри</span> моей работы.</h2>
@@ -1042,7 +1147,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   </section>
 
   <!-- ========== 04 ЛАБОРАТОРИЯ ========== -->
-  <section class="pad" id="lab" data-idx="04 / МЕХАНИКИ" data-theme="light" data-role="04 · возможности вместо портфолио">
+  <section class="pad" id="lab" data-idx="04 / МЕХАНИКИ" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Механики</span>
       <h2 class="c1-9">Наведите курсор.<br>Каждая плитка — приём, который я ставлю на страницы.</h2>
@@ -1093,7 +1198,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   </section>
 
   <!-- ========== 05 ЧТО ВХОДИТ ========== -->
-  <section class="pad" id="included" data-idx="05 / СОСТАВ" data-theme="light" data-role="05 · что именно за эти деньги">
+  <section class="pad" id="included" data-idx="05 / СОСТАВ" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Что входит</span>
       <h2 class="c1-9">Всё, что нужно странице,<br>чтобы начать работать.</h2>
@@ -1111,7 +1216,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   </section>
 
   <!-- ========== 06 ПРОЦЕСС ========== -->
-  <section class="pad" id="process" data-idx="06 / ПРОЦЕСС" data-theme="light" data-role="06 · снимает «как это будет идти»">
+  <section class="pad" id="process" data-idx="06 / ПРОЦЕСС" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Как работаем</span>
       <h2 class="c1-9">Три шага, прозрачно</h2>
@@ -1134,7 +1239,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   </section>
 
   <!-- ========== 07 ЦЕНА ========== -->
-  <section class="pad" id="price" data-idx="07 / ЦЕНА" data-theme="light" data-role="07 · одна цифра, без вилок и звёздочек">
+  <section class="pad" id="price" data-idx="07 / ЦЕНА" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Цена</span>
       <div class="price">
@@ -1157,7 +1262,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   </section>
 
   <!-- ========== 08 FAQ ========== -->
-  <section class="pad" id="faq" data-idx="08 / ВОПРОСЫ" data-theme="light" data-role="08 · остаточные возражения">
+  <section class="pad" id="faq" data-idx="08 / ВОПРОСЫ" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Вопросы</span>
       <h2 class="c1-9">Отвечаю честно</h2>
@@ -1180,7 +1285,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   </section>
 
   <!-- ========== 09 КОНТАКТ ========== -->
-  <section class="contact pad" id="contact" data-idx="09 / КОНТАКТ" data-theme="dark" data-role="09 · целевое действие">
+  <section class="contact pad" id="contact" data-idx="09 / КОНТАКТ" data-theme="dark">
     <div class="wrap">
       <span class="eyebrow rv">Начнём</span>
       <h2 class="c1-9">Расскажите про проект — отвечу в тот же день</h2>
@@ -1299,7 +1404,10 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       var el = pending[i];
       if(el.classList.contains('in')) continue;
       var r = el.getBoundingClientRect();
-      if(r.top < vh * 0.94 && r.bottom > -vh * 0.5){ el.classList.add('in'); io.unobserve(el); }
+      /* Верхней границы быть не должно: при быстрой прокрутке блок успевает
+         уйти выше экрана непоказанным, и условие «ещё виден» оставляло его
+         прозрачным навсегда. Всё, что выше порога, показываем. */
+      if(r.top < vh * 0.94){ el.classList.add('in'); io.unobserve(el); }
       else rest.push(el);
     }
     pending = rest;
@@ -1307,14 +1415,6 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   window.addEventListener('load', function(){
     setTimeout(function(){ sweptAt = -1e9; slowTick(); }, 400);
   });
-
-  /* ---------- размерная линия: реальная ширина колонки ---------- */
-  var dimVal = document.getElementById('dimVal'), dimBox = document.getElementById('dim');
-  if(dimBox && window.ResizeObserver){
-    new ResizeObserver(function(entries){
-      dimVal.textContent = Math.round(entries[0].contentRect.width) + ' px · 8 колонок из 12';
-    }).observe(dimBox);
-  }
 
   /* ---------- точки разделов справа ---------- */
   var sections = [].slice.call(document.querySelectorAll('section[data-idx]'));
@@ -1352,10 +1452,14 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   var skyDust = document.getElementById('skyDust'),
       skyStars = document.getElementById('skyStars'),
       skyNeb = document.getElementById('skyNeb'),
+      skyBand = document.getElementById('skyBand'),
+      skyTw = document.getElementById('skyTwinkle'),
+      /* [элемент, множитель параллакса, базовая непрозрачность, габарит,
+         якорь, доля экрана] — планета встаёт в кадр, когда её секция вверху. */
       planets = [
-        [document.getElementById('planetA'), 0.16, 1],
-        [document.getElementById('planetB'), 0.32, 1],
-        [document.getElementById('planetC'), 0.09, 1]
+        [document.getElementById('planetA'), 0.16, 1, null, '#lab',   0.62],
+        [document.getElementById('planetB'), 0.30, 1, null, '#price', 0.16],
+        [document.getElementById('planetC'), 0.10, 1, null, '#faq',   0.10]
       ];
 
   /* Базовую непрозрачность держит CSS — там же живут медиазапросы. JS пишет
@@ -1375,11 +1479,24 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     skyDim = k <= 0 ? 1 : (k >= 0.5 ? 0 : 1 - k / 0.5);
   }
 
+  /* Положение планеты выводим из её секции, а не из `vh`: параллакс считается
+     в пикселях прокрутки, и жёстко заданный `top` при другой высоте экрана
+     уезжает совсем не туда — две планеты из трёх так и не показывались.
+     Хотим: когда секция-якорь наверху, планета стоит на доле `f` экрана.
+     Отсюда top = f*vh + k*anchorTop. */
+  function planetAnchor(m){
+    var sec = document.querySelector(m[4]);
+    if(!sec) return;
+    var top = sec.getBoundingClientRect().top + scrollPos();
+    m[0].style.top = Math.round(m[5] * window.innerHeight + m[1] * top) + 'px';
+  }
+
   function readBaseOps(){
     skyVH = window.innerHeight;
     for(var i = 0; i < planets.length; i++){
       var el = planets[i][0];
       if(!el) continue;
+      planetAnchor(planets[i]);
       var prev = el.style.opacity;
       el.style.opacity = '';
       planets[i][2] = parseFloat(getComputedStyle(el).opacity) || 1;
@@ -1388,6 +1505,12 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     }
   }
   readBaseOps();
+  /* Пин секции 03 вставляет распорку и сдвигает всё, что ниже, — после
+     пересборки ScrollTrigger якоря надо перемерить. */
+  window.addEventListener('load', function(){
+    setTimeout(readBaseOps, 700);
+    if(window.ScrollTrigger) ScrollTrigger.addEventListener('refresh', readBaseOps);
+  });
   var opTimer = 0;
   window.addEventListener('resize', function(){
     clearTimeout(opTimer);
@@ -1408,6 +1531,8 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     if(skyDust)  skyDust.style.transform  = 'translate3d(0,' + (-st * 0.035) + 'px,0)';
     if(skyStars) skyStars.style.transform = 'translate3d(0,' + (-st * 0.075) + 'px,0)';
     if(skyNeb)   skyNeb.style.transform   = 'translate3d(0,' + (-st * 0.02) + 'px,0)';
+    if(skyBand)  skyBand.style.transform  = 'translate3d(0,' + (-st * 0.014) + 'px,0)';
+    if(skyTw)    skyTw.style.transform    = 'translate3d(0,' + (-st * 0.085) + 'px,0)';
     var vh = skyVH;
     for(var i=0;i<planets.length;i++){
       var m = planets[i];

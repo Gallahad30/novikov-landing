@@ -299,7 +299,11 @@ html:not(.js) .hero__offer u::after{transform:none}
 /* Потолок в 520 px резал сцену на высоких экранах: при 1300 px высоты холст
    занимал 40 % секции, а низ оставался пустым. Держим долю экрана, потолок
    поднимаем — 56vh при 860 px даёт те же 482, а при 1300 уже 728. */
-.xpl__view{position:relative;height:min(56vh,820px);perspective:1700px;perspective-origin:50% 46%}
+/* Клип обязателен: CSS-запаска разбора (`.xpl__stack`) шире контейнера —
+   543 px в 350 на телефоне. Без него у документа появляется горизонтальная
+   прокрутка, шапку сдвигает и кнопка уезжает за край. */
+.xpl__view{position:relative;height:min(56vh,820px);perspective:1700px;
+  perspective-origin:50% 46%;overflow:hidden}
 @media (max-width:1000px){ .xpl__view{height:min(42vh,360px)} }
 .xpl__stack{position:absolute;inset:0;transform-style:preserve-3d;
   transform:translateX(-21%) rotateX(62deg) rotateZ(-28deg) scale(.95)}
@@ -343,6 +347,8 @@ html:not(.js) .hero__offer u::after{transform:none}
 .wall.wb{left:0;bottom:0;width:100%;height:116px;transform-origin:bottom center;transform:translateZ(58px) rotateX(90deg)}
 .wall.wc{left:0;top:0;width:116px;height:100%;transform-origin:left center;transform:translateZ(58px) rotateY(90deg)}
 .wall.wd{right:0;top:0;width:116px;height:100%;transform-origin:right center;transform:translateZ(58px) rotateY(-90deg)}
+/* крылья демонстрации торчат за плитку — режем по ней же */
+.lab__stage{overflow:hidden}
 .solar{position:absolute;width:186px;height:120px;top:calc(50% - 64px);border-radius:2px;
   background:
     repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 11px),
@@ -505,17 +511,32 @@ html:not(.js) .xpl__item p,.xpl.static .xpl__item p{max-height:none;opacity:1;ma
   font-size:clamp(3.2rem,8.5vw,7.6rem);font-variant-numeric:tabular-nums;white-space:nowrap}
 /* «от» ставим отдельной строкой над цифрой: в строку оно не влезает —
    при 152 px кегля «от 15 000 ₽» шире колонки и число ломается пополам */
-.price__from{display:block;font-family:var(--mono);font-weight:500;font-size:.14em;
+/* «от» — предлог, а не часть суммы: ставим в строку, кеглем помельче и
+   тоном тише. Отдельной строкой над числом он читался как «0 Т». */
+.price__from{font-family:var(--body);font-weight:600;font-size:.26em;
+  letter-spacing:-.01em;color:var(--slate);margin-right:.14em;vertical-align:.14em}
+.price__from--old{display:block;font-family:var(--mono);font-weight:500;font-size:.14em;
   letter-spacing:.22em;text-transform:uppercase;color:var(--slate);
   margin-bottom:.5em}
 .price__cur{font-size:.4em;letter-spacing:-.02em;margin-left:.06em}
-.price__note{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--slate);margin:20px 0 0;max-width:34ch;line-height:1.7}
+/* Абзац капслоком в моноширинном не читается. Моно оставляем подписям в
+   три слова, объяснение цены — обычным текстом. */
+.price__note{font-size:.95rem;color:var(--slate);margin:22px 0 0;max-width:44ch;line-height:1.62}
+.price__note b{color:var(--graphite);font-weight:600}
+.price__hint{font-size:.86rem;color:var(--slate-2);margin:16px 0 0;max-width:42ch;line-height:1.6}
 .price__cta{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
 .price__list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
 .price__list li{display:flex;gap:14px;align-items:baseline;padding:13px 0;border-bottom:1px solid var(--line);font-size:.96rem}
 .price__list li::before{content:"";flex:0 0 6px;width:6px;height:6px;background:var(--blue);border-radius:1px;transform:translateY(-2px)}
-.price__list li.no{color:var(--slate)}
-.price__list li.no::before{background:var(--line)}
+/* «Не входит» — отдельная группа с заголовком. Разница в оттенке точки
+   слишком тихая для смыслового «нет». */
+.price__list li.no{color:var(--slate-2)}
+.price__list li.no::before{background:none;box-shadow:inset 0 0 0 1px var(--line-2)}
+.price__sep::before{display:none}
+.price__sep{display:flex;align-items:baseline;gap:12px;padding:26px 0 8px;
+  font-family:var(--mono);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--slate-2);border-bottom:1px solid var(--line)}
+.price__sep::after{content:"";flex:1 1 auto;height:1px;background:var(--line)}
 
 /* ============================================================
    08 FAQ
@@ -536,7 +557,6 @@ html:not(.js) .xpl__item p,.xpl.static .xpl__item p{max-height:none;opacity:1;ma
 .qa[open] .qa__a{animation:fadeUp .45s var(--ease)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .ask{border:1px solid var(--line);border-radius:2px;background:var(--paper-hi);padding:24px 22px;position:sticky;top:100px;margin-top:40px}
-.ask::before{content:"";position:absolute;left:-1px;top:-1px;width:9px;height:9px;border:1px solid var(--pencil);border-right:0;border-bottom:0;opacity:.7}
 .ask h3{margin-bottom:10px}
 .ask p{margin:0 0 18px;color:var(--slate);font-size:.93rem}
 .ask .btn{width:100%;justify-content:center}
@@ -784,7 +804,7 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
   --orb-warm:#C98A5E; --orb-ring:rgba(153,196,224,.5);
   --orb-size:min(212vh,172vw);
   --orb-x:-.40;            /* сдвиг центра за правый край, в долях размера */
-  --orb-y:-.30;            /* и вниз: в кадре остаётся верхний левый лимб */
+  --orb-y:-.24;            /* и вниз: в кадре остаётся верхний левый лимб */
   position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
   contain:paint}
 .orb>*{position:absolute}
@@ -980,8 +1000,8 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
    Косая — потому что и лимб идёт наискось. */
 .orb__scrim{inset:0;
   background:
-    linear-gradient(101deg,var(--paper) 0 16%,rgba(7,11,20,.9) 30%,
-      rgba(7,11,20,.55) 44%,rgba(7,11,20,.12) 60%,transparent 72%),
+    linear-gradient(101deg,var(--paper) 0 18%,rgba(7,11,20,.92) 34%,
+      rgba(7,11,20,.62) 48%,rgba(7,11,20,.2) 64%,transparent 78%),
     linear-gradient(0deg,var(--paper) 0 2%,rgba(7,11,20,.5) 9%,transparent 22%)}
 
 @keyframes orbBreath{0%,100%{opacity:.85;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
@@ -1012,6 +1032,15 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
       rgba(7,11,20,.6) 46%,rgba(7,11,20,.2) 66%,transparent 80%),
     linear-gradient(0deg,var(--paper) 0 3%,rgba(7,11,20,.55) 12%,transparent 26%)}
 }
+/* Холст шейдера. Лежит первым потомком, под ширмой: планета уходит под
+   текст той же косой, что и в CSS-версии. Проявляется, когда пришёл первый
+   кадр, — до этого виден градиентный вариант, и подмены глаз не ловит. */
+.orb__canvas{position:absolute;inset:0;width:100%;height:100%;
+  opacity:0;transition:opacity .5s ease}
+/* Шейдер отрисовался — градиентные слои больше не нужны. Ширма остаётся:
+   она общая для обеих версий. */
+.orb--gl .orb__stage,.orb--gl .orb__moons{display:none}
+
 /* Тяжёлые украшения — после загрузки. Повторяющиеся градиенты и штриховка
    кольца считаются попиксельно; на слое во весь экран это задерживает первую
    отрисовку, и заголовок не успевает выехать из-под маски. Класс `orb--rich`
@@ -1028,7 +1057,16 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
 /* За кадром планета не видна, а слои композитор всё равно считает.
    Класс вешает наблюдатель пересечения по первому экрану. */
 .orb--rest *{animation-play-state:paused !important}
-@media (max-width:640px){ .orb{display:none} }
+/* На телефоне планета не прячется, а уходит вниз: в кадре остаётся дуга
+   лимба под текстом. Основной трафик мобильный, и открывать сайт пустым
+   чёрным экраном — терять единственный сильный кадр. */
+@media (max-width:640px){
+  .orb{--orb-size:min(150vh,230vw);--orb-x:-.317;--orb-y:-.70;opacity:.92}
+  .orb__scrim{background:
+    linear-gradient(180deg,var(--paper) 0 40%,rgba(7,11,20,.86) 62%,
+      rgba(7,11,20,.45) 76%,rgba(7,11,20,.12) 88%,transparent 96%)}
+  .orb__moons{display:none}
+}
 /* При выключенной анимации облачные слои не нужны вовсе: они и есть
    движение. Заодно страница перестаёт тратить на них растеризацию —
    в этом режиме показ блоков идёт без ScrollSmoother и особенно чувствителен
@@ -1041,7 +1079,41 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
   .orb__ring::before{display:none}
 }
 
+/* --- полоса призыва между разделами ---
+   Между разбором и ценой было четыре экрана без единой кнопки — ровно там,
+   где человек уже прогрет и готов спросить. Полоса тихая: волосяные линии,
+   одна строка, одна кнопка. */
+.mid-cta{margin:clamp(48px,6vw,86px) 0 0;padding:clamp(22px,2.6vw,32px) 0;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px}
+.mid-cta p{margin:0;max-width:52ch;color:var(--slate);font-size:1rem}
+.mid-cta b{color:var(--graphite);font-weight:600}
+/* На телефоне снизу всегда висит панель с той же кнопкой — вторая рядом
+   превращается в шум. Оставляем строку, кнопку убираем. */
+@media (max-width:700px){ .mid-cta{padding:20px 0} .mid-cta .btn{display:none} }
+
+/* --- выдох перед ценой ---
+   Пять разделов подряд шли одним метром: надзаголовок, крупный h2, лид,
+   сетка карточек. Одна строка на весь экран сбивает счёт и готовит к цифре. */
+.breath{padding:clamp(52px,7vw,104px) 0}
+.breath p{margin:0;max-width:26ch;font-family:var(--display);font-weight:600;
+  letter-spacing:-.03em;line-height:1.12;color:var(--graphite);
+  font-size:clamp(1.5rem,3.3vw,2.5rem)}
+.breath span{color:var(--slate)}
+
+/* Вуаль под коммерческими разделами: планеты неба спорили с числом и
+   списком. Гасим фон, а не содержание. */
+#price,#faq{position:relative}
+#price::before,#faq::before{content:"";position:absolute;inset:0;z-index:0;
+  background:radial-gradient(ellipse 90% 70% at 40% 45%,rgba(7,11,20,.72),rgba(7,11,20,.5) 60%,rgba(7,11,20,.2) 100%);
+  pointer-events:none}
+#price>.wrap,#faq>.wrap{position:relative;z-index:1}
+
 /* --- точки разделов справа --- */
+/* Один глагол на все призывы. В узкой шапке он же, но короче. */
+.btn__short{display:none}
+@media (max-width:900px){ .btn__long{display:none} .btn__short{display:inline} }
+
 .dots{position:fixed;z-index:70;top:50%;transform:translateY(-50%);
   right:max(16px,calc((100vw - var(--maxw))/2 - 30px));
   display:flex;flex-direction:column;align-items:flex-end;gap:15px}
@@ -1152,7 +1224,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       </nav>
       <a class="btn btn--solid" href="#contact">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.7.8l-4.7-3.5-2.3 2.2c-.3.3-.5.4-.9.4l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13.1l-4.6-1.4c-1-.3-1-1 .2-1.5l18-6.9c.8-.3 1.6.2 1.4 1z"/></svg>
-        <span>Написать</span>
+        <span class="btn__long">Обсудить проект</span><span class="btn__short">Обсудить</span>
       </a>
     </div>
   </div></div>
@@ -1357,11 +1429,16 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
           <span class="lab__meta"><span class="k">LAY-06</span><h3>Перестроение сетки</h3><p>Элементы переезжают на новые места по дуге, а не исчезают и появляются. Взгляд не теряет объект.</p></span>
         </button>
       </div>
+
+      <div class="mid-cta rv d1">
+        <p>Это не витрина приёмов, а куски рабочих страниц. <b>Расскажу, какие подойдут вашей.</b></p>
+        <a href="#contact" class="btn btn--solid"><span>Обсудить проект</span></a>
+      </div>
     </div>
   </section>
 
   <!-- ========== 05 ЧТО ВХОДИТ ========== -->
-  <section class="pad" id="included" data-idx="05 / СОСТАВ" data-theme="light">
+  <section class="pad" id="included" data-idx="05 / ЧТО ВХОДИТ" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Что входит</span>
       <h2 class="c1-9">Всё, что нужно странице,<br>чтобы начать работать.</h2>
@@ -1374,6 +1451,11 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
         <div class="card rv"><span class="code">MOT</span><h3>Анимации</h3><p>Те самые механики из блока выше. Ставлю их там, где они помогают читать: ведут взгляд, отделяют разделы, подсказывают, что кликается. Там, где мешают, — не ставлю.</p><span class="card__note">Отдаю: движение, а не мельтешение</span><div class="rule"></div></div>
         <div class="card rv d1"><span class="code">ANL</span><h3>Формы и аналитика</h3><p>Заявка падает прямо вам — в мессенджер или почтой, без чужих личных кабинетов и подписок. Аналитика с целями показывает, откуда пришёл человек и на каком блоке ушёл.</p><span class="card__note">Отдаю: цели, события, доступы</span><div class="rule"></div></div>
         <div class="card rv d2"><span class="code">OPS</span><h3>Запуск</h3><p>Выкладываю на вашу площадку, подключаю SSL, проверяю на живых устройствах. Отдаю исходники и короткую инструкцию, как править тексты самому, без меня и без вёрстки.</p><span class="card__note">Отдаю: рабочую страницу и доступы</span><div class="rule"></div></div>
+      </div>
+
+      <div class="mid-cta rv d1">
+        <p>Шесть частей — одна сборка, один срок. <b>Скажите, что за продукт, и я назову дату.</b></p>
+        <a href="#contact" class="btn btn--solid"><span>Обсудить проект</span></a>
       </div>
     </div>
   </section>
@@ -1401,6 +1483,13 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     </div>
   </section>
 
+  <!-- выдох перед ценой: сбивает метр из пяти одинаковых разделов -->
+  <section class="breath">
+    <div class="wrap">
+      <p class="rv">Самое неудобное место любого сайта — цена.<br><span>У меня она просто написана.</span></p>
+    </div>
+  </section>
+
   <!-- ========== 07 ЦЕНА ========== -->
   <section class="pad" id="price" data-idx="07 / ЦЕНА" data-theme="light">
     <div class="wrap">
@@ -1408,8 +1497,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       <div class="price">
         <div class="rv">
           <span class="price__fig" data-lag="0.06"><span class="price__from">от</span><span class="cnt" data-target="15000">15 000</span><span class="price__cur">₽</span></span>
-          <p class="price__note">Столько стоит базовая сборка целиком. Больше — только если работы объективно больше: сложная графика, много экранов, нестандартные механики. Сумму называю до начала работы.</p>
+          <p class="price__note">Столько стоит базовая сборка целиком. Больше — только если работы объективно больше: сложная графика, много экранов, нестандартные механики. <b>Сумму называю до начала работы и дальше её не двигаю.</b></p>
           <div class="price__cta"><a href="#contact" class="btn btn--lg btn--solid"><span>Обсудить проект</span></a></div>
+          <p class="price__hint">Внизу страницы — сборщик сообщения: три поля, текст соберётся сам</p>
         </div>
         <ul class="price__list rv d1">
           <li>Дизайн, тексты, вёрстка, анимации</li>
@@ -1417,8 +1507,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
           <li>Метрика с настроенными целями</li>
           <li>Публикация на вашем домене</li>
           <li>Исходники и инструкция по правкам</li>
-          <li class="no">Не входит: съёмка, иллюстрации на заказ, тексты на иностранном языке</li>
-          <li class="no">Не входит: интернет-магазин, личный кабинет, многостраничный сайт</li>
+          <li class="price__sep" aria-hidden="true">Не входит</li>
+          <li class="no">Съёмка, иллюстрации на заказ, тексты на иностранном языке</li>
+          <li class="no">Интернет-магазин, личный кабинет, многостраничный сайт</li>
         </ul>
       </div>
     </div>
@@ -1442,7 +1533,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       <aside class="ask c9-13 rv d3">
         <h3>Вопроса нет в списке?</h3>
         <p>Спросите напрямую — отвечу текстом, без брифа и созвона.</p>
-        <a class="btn btn--ghost" href="https://t.me/NovikovCore" target="_blank" rel="noopener"><span>Спросить в Telegram</span></a>
+        <a class="btn btn--ghost" href="https://t.me/NovikovCore" target="_blank" rel="noopener"><span>Обсудить проект</span></a>
       </aside>
     </div>
   </section>
@@ -1499,7 +1590,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 <div class="dock">
   <a class="btn btn--solid" href="#contact">
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.7.8l-4.7-3.5-2.3 2.2c-.3.3-.5.4-.9.4l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13.1l-4.6-1.4c-1-.3-1-1 .2-1.5l18-6.9c.8-.3 1.6.2 1.4 1z"/></svg>
-    <span>Написать</span>
+    <span>Обсудить проект</span>
   </a>
   <a class="btn btn--ghost" href="#price"><span>Цена</span></a>
 </div>
@@ -1547,7 +1638,21 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   setTimeout(function(){
     var box=document.getElementById('xpl');
     if(box && (reduce || !window.gsap || !window.ScrollTrigger)) box.classList.add('static');
-  }, 900);
+  }, 2200);
+
+  /* Статика — запаска на случай, когда сцена так и не поднялась. Если она
+     всё-таки поднялась, класс надо снять: раскладка статики выше экрана, и
+     закреплённый раздел перестаёт совпадать с вьюпортом (проверка ловила
+     1281 против 690). Ждём именно появления холста, а не таймера. */
+  (function(){
+    var box = document.getElementById('xpl');
+    if(!box) return;
+    var n = 0, t = setInterval(function(){
+      if(document.body.classList.contains('gl-on')){
+        box.classList.remove('static'); clearInterval(t);
+      } else if(++n > 60) clearInterval(t);
+    }, 250);
+  })();
 
   /* ---------- чертёжный слой ----------
      Тумблера больше нет: сетка, размерные линии, роли блоков и координатный
@@ -2109,6 +2214,530 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 {"@type":"Question","name":"За что не берётесь?","acceptedAnswer":{"@type":"Answer","text":"За интернет-магазины, личные кабинеты и многостраничные сайты."}}]}
 </script>
 
+<script>
+/* Планета первого экрана на WebGL.
+
+   Градиентная версия упёрлась в потолок: CSS умеет мягкие переходы, но не
+   умеет шум, вихри, тень кольца на шаре и тень шара на кольце. Здесь всё это
+   считает фрагментный шейдер — один полноэкранный треугольник, никакой
+   геометрии и никакой библиотеки: three.js на первый экран тянуть незачем.
+
+   Сфера трассируется прямо в шейдере ортографически: для пикселя внутри диска
+   нормаль берётся как (u, v, sqrt(1-u²-v²)). Перспективой на таком радиусе
+   можно пренебречь — видимая шапка отличается на доли процента, а лимб
+   получается точным.
+
+   CSS-планета остаётся: она показывается сразу, до загрузки, и работает
+   запасным вариантом без WebGL и при `prefers-reduced-motion`. Когда шейдер
+   отдал первый кадр, страница получает класс `orb--gl` и слои CSS уходят.  */
+(function(){
+  var host = document.getElementById('heroOrb');
+  if(!host) return;
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  var canvas = document.createElement('canvas');
+  canvas.className = 'orb__canvas';
+  var gl = canvas.getContext('webgl', {
+    alpha: true, premultipliedAlpha: false, antialias: false,
+    depth: false, stencil: false, powerPreference: 'high-performance'
+  });
+  if(!gl) return;                       /* нет WebGL — остаётся CSS-планета */
+
+  var VERT =
+    'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+
+  var FRAG = [
+'precision highp float;',
+'uniform vec2  uRes;',      /* размер холста в пикселях */
+'uniform vec3  uSph;',      /* центр диска (x,y) и радиус в пикселях */
+'uniform float uT;',        /* секунды с загрузки */
+
+/* --- шум --------------------------------------------------------------
+   Симплексный шум Стефана Густавсона (Ashima Arts, MIT). Трёхмерный взят
+   намеренно: полосы считаются от точки на сфере, и двумерный шум дал бы шов
+   по нулевому меридиану — на планете во весь экран он был бы виден. */
+'vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}',
+'vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}',
+'vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}',
+'vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}',
+'float snoise(vec3 v){',
+'  const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);',
+'  vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);',
+'  vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g;',
+'  vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);',
+'  vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+C.yyy; vec3 x3=x0-D.yyy;',
+'  i=mod289(i);',
+'  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))',
+'        +i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));',
+'  float n_=0.142857142857; vec3 ns=n_*D.wyz-D.xzx;',
+'  vec4 j=p-49.0*floor(p*ns.z*ns.z);',
+'  vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);',
+'  vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);',
+'  vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);',
+'  vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));',
+'  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;',
+'  vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y);',
+'  vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);',
+'  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));',
+'  p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;',
+'  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;',
+'  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));',
+'}',
+'float fbm(vec3 p){',
+'  float a=0.5,s=0.0;',
+'  for(int i=0;i<4;i++){ s+=a*snoise(p); p=p*2.03+vec3(11.3,7.7,3.1); a*=0.5; }',
+'  return s;',
+'}',
+'float fbm3(vec3 p){',                    /* короткая версия для мелочи */
+'  float a=0.5,s=0.0;',
+'  for(int i=0;i<3;i++){ s+=a*snoise(p); p=p*2.11+vec3(5.2,1.3,9.4); a*=0.5; }',
+'  return s;',
+'}',
+
+/* --- сцена ----------------------------------------------------------- */
+/* --- сцена -----------------------------------------------------------
+   Солнце светит слева сверху и чуть на зрителя: лимб на дневной стороне
+   светится, терминатор уходит вправо вниз, под текст. */
+'const vec3 SUN=normalize(vec3(-0.46,0.40,0.79));',
+'const vec3 VIEW=vec3(0.0,0.0,1.0);',
+/* Кольцо: прижимать к планете нельзя — при таком наклоне его проекция
+   целиком прячется за диском. Наклон 0.24 держит ближнюю дугу в кадре. */
+'const float RIN=1.22;',
+'const float ROUT=2.05;',
+'const vec3 AXIS=normalize(vec3(-0.196,0.940,0.240));',
+
+'vec3 rotAxis(vec3 v,vec3 ax,float a){',
+'  float c=cos(a),s=sin(a);',
+'  return v*c+cross(ax,v)*s+ax*dot(ax,v)*(1.0-c);',
+'}',
+'float hash11(float p){ return fract(sin(p*127.1)*43758.5453); }',
+
+/* Гребневой шум: 1-|шум| даёт не облака, а нити. Именно по ним читаются
+   струи между поясами — без них атмосфера остаётся ватой. */
+'float ridged(vec3 p){',
+'  float a=0.5,s=0.0;',
+'  for(int i=0;i<3;i++){ s+=a*(1.0-abs(snoise(p))); p=p*2.17+vec3(3.7,9.1,5.3); a*=0.5; }',
+'  return s;',
+'}',
+
+/* Сжатие координат поперёк оси: частота по широте высокая, вдоль широты
+   низкая. Плюс сдвиг по долготе, растущий к экватору, — это и есть сдвиговый
+   поток, из-за которого детали вытягиваются в струи, а не плывут пятнами. */
+'vec3 flowCoord(vec3 sp,float lt,float k){',
+'  vec3 tang=normalize(cross(AXIS,sp)+vec3(1e-5));',
+'  vec3 q=sp+tang*(k*(1.0-lt*lt));',
+'  q*=2.4; q+=AXIS*dot(q,AXIS)*7.0;',
+'  return q;',
+'}',
+
+'float ringDens(float r){',
+'  float t=(r-RIN)/(ROUT-RIN);',
+'  if(t<0.0||t>1.0) return 0.0;',
+'  float d=0.52+0.48*fbm3(vec3(r*17.0,0.0,0.0));',
+'  d*=0.72+0.28*sin(r*128.0);',
+'  d*=smoothstep(0.0,0.05,t)*smoothstep(1.0,0.88,t);',
+'  d*=1.0-0.94*smoothstep(0.31,0.35,t)*smoothstep(0.43,0.39,t);',
+'  d*=1.0-0.66*smoothstep(0.63,0.66,t)*smoothstep(0.71,0.68,t);',
+'  d*=1.0-0.40*smoothstep(0.83,0.85,t)*smoothstep(0.89,0.87,t);',
+'  return clamp(d,0.0,1.0);',
+'}',
+
+/* Тень шара на кольце. Край мягкий: у планеты есть атмосфера, резкой
+   границы полутени не бывает. */
+'float sphereShadow(vec3 q){',
+'  float b=dot(q,SUN);',
+'  if(b>0.0) return 1.0;',
+'  float h=length(q-SUN*b);',
+'  return smoothstep(0.96,1.16,h);',
+'}',
+
+/* Тень кольца на шаре, с полутенью: щели дают не чёрные полосы, а мягкие
+   ленты. Берём три пробы вдоль радиуса — этого хватает. */
+'float ringShadow(vec3 P){',
+'  float dn=dot(SUN,AXIS);',
+'  if(abs(dn)<0.02) return 1.0;',
+'  float s=-dot(P,AXIS)/dn;',
+'  if(s<0.0) return 1.0;',
+'  float r=length(P+SUN*s);',
+'  float d=(ringDens(r)+ringDens(r-0.035)+ringDens(r+0.035))/3.0;',
+'  return 1.0-0.74*d;',
+'}',
+
+'vec4 ringAt(vec3 q,float r,float nightSide){',
+'  float dens=ringDens(r);',
+'  if(dens<=0.0) return vec4(0.0);',
+'  float sh=sphereShadow(q);',
+'  float lit=abs(dot(SUN,AXIS));',
+'  vec3 c=mix(vec3(0.30,0.36,0.44),vec3(0.80,0.85,0.90),dens);',
+'  c*=(0.30+0.85*lit)*mix(0.20,1.0,sh);',
+/* Лёд рассеивает вперёд: над ночной стороной кольцо светлее, чем над дневной. */
+'  c*=1.0+0.55*nightSide*sh;',
+'  return vec4(c,dens*0.8);',
+'}',
+
+'void main(){',
+'  vec2 pix=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);',
+/* Работаем в системе, где Y смотрит вверх: ось планеты и солнце заданы
+   как в жизни. С экранным Y вниз всё зеркалится молча. */
+'  vec2 uv=vec2(pix.x-uSph.x,uSph.y-pix.y)/uSph.z;',
+'  float d2=dot(uv,uv);',
+'  vec3 col=vec3(0.0); float alpha=0.0;',
+
+'  float tRing=-dot(uv,AXIS.xy)/AXIS.z;',
+'  vec3 qRing=vec3(uv,tRing);',
+'  float rRing=length(qRing);',
+
+'  if(d2<1.0){',
+'    float z=sqrt(max(0.0,1.0-d2));',
+'    vec3 n=vec3(uv,z);',
+'    float lam=dot(n,SUN);',
+'    float day=smoothstep(-0.30,0.42,lam);',
+'    float night=1.0-day;',
+
+/* Дифференциальное вращение: экватор обгоняет умеренные широты. */
+'    float lt0=dot(n,AXIS);',
+'    float w=0.0130+0.0070*(1.0-abs(lt0));',
+'    vec3 sp=rotAxis(n,AXIS,-uT*w);',
+'    float lt=dot(sp,AXIS);',
+'    float zl=asin(clamp(lt,-1.0,1.0));',
+
+/* Две палубы. Верхняя сдвинута по нормали — на лимбе она уезжает
+   относительно нижней, и у атмосферы появляется толщина. */
+'    vec3 c1=flowCoord(sp,lt,uT*0.020);',
+'    float warp=fbm3(sp*2.6+vec3(0.0,uT*0.012,0.0));',
+'    float deep=fbm(c1*0.86+warp*0.42);',
+'    vec3 spHi=rotAxis(n+n*(1.0-z)*0.055,AXIS,-uT*(w*1.22));',
+'    vec3 c2=flowCoord(normalize(spHi),lt,uT*0.031);',
+'    float high=fbm(c2*1.45+warp*0.66);',
+'    float fil=ridged(c1*2.9+warp*0.5);',
+
+/* Зоны: синус по широте, сбитый шумом. Ширина поясов гуляет, линейки нет. */
+'    float zones=sin(zl*27.0+deep*2.9+warp*1.1);',
+'    float mixv=clamp(0.5+0.5*zones+0.16*deep,0.0,1.0);',
+/* Дырки в верхней палубе: сквозь них видно нижнюю — отсюда глубина. */
+'    float veil=smoothstep(0.02,0.62,high);',
+
+/* Вихрь: овал в системе планеты, координаты вокруг центра подкручены. */
+'    vec3 spotDir=normalize(vec3(-0.52,0.16,0.84));',
+'    vec3 sAx=normalize(cross(AXIS,spotDir));',
+'    float dlat=dot(sp,AXIS)-dot(spotDir,AXIS);',
+'    float dlon=dot(sp,sAx);',
+'    vec2 sd=vec2(dlon/0.26,dlat/0.092);',
+'    float sr=length(sd);',
+'    float front=step(0.0,dot(sp,spotDir));',
+'    float spot=smoothstep(1.15,0.15,sr)*front;',
+'    float swirl=0.0, wake=0.0;',
+'    if(sr<2.6&&front>0.5){',
+'      float sa=(1.0-clamp(sr,0.0,1.0))*2.3+uT*0.05;',
+'      vec2 sw=vec2(sd.x*cos(sa)-sd.y*sin(sa),sd.x*sin(sa)+sd.y*cos(sa));',
+'      swirl=fbm3(vec3(sw*1.9,uT*0.02));',
+/* След за вихрем: у настоящего пятна с одной стороны идёт рваная турбулентная
+   полоса. Без неё вихрь выглядит наклейкой. */
+'      wake=smoothstep(2.4,0.6,sr)*smoothstep(0.0,0.9,-sd.x)*(0.5+0.5*fil);',
+'    }',
+
+/* Палитра: тёмная синь в поясах, холодная светлая в зонах, тёплый вихрь. */
+'    vec3 deepC=vec3(0.017,0.048,0.088);',
+'    vec3 midC =vec3(0.072,0.166,0.252);',
+'    vec3 hiC  =vec3(0.285,0.420,0.512);',
+'    vec3 base=mix(deepC,midC,smoothstep(0.06,0.58,mixv));',
+'    base=mix(base,hiC,smoothstep(0.58,1.0,mixv));',
+'    base*=0.92;',
+/* Верхняя палуба ложится поверх нижней, но только там, где она плотная. */
+'    base=mix(base,mix(base,vec3(0.34,0.48,0.58),0.55),veil*0.42);',
+'    base*=0.84+0.30*fil*mixv;',
+'    base+=vec3(0.05,0.07,0.09)*smoothstep(0.58,1.0,fil)*veil*mixv*0.8;',
+'    vec3 warm=mix(vec3(0.42,0.26,0.18),vec3(0.80,0.56,0.36),0.5+0.5*swirl);',
+'    base=mix(base,warm,spot*0.74);',
+'    base=mix(base,mix(base,vec3(0.55,0.42,0.32),0.5),wake*0.28);',
+/* Полярная дымка. */
+'    base=mix(base,vec3(0.34,0.46,0.55),smoothstep(0.74,1.0,abs(lt))*0.42);',
+/* Пояса не одного тона: часть уходит в тёплую охру, как у настоящего
+   гиганта. Держим это только в тёмных поясах, зоны остаются холодными. */
+'    base=mix(base,base*vec3(1.16,0.99,0.86),smoothstep(0.25,0.75,abs(sin(zl*5.0)))*(1.0-mixv)*0.45);',
+
+/* Свет. Терминатор мягкий и с сумеречной полосой: у газового гиганта резкой
+   границы нет, а на самой кромке свет краснеет — путь через атмосферу длиннее. */
+'    float limb=pow(max(z,0.0),0.42);',
+'    float shade=ringShadow(n);',
+'    float twil=smoothstep(0.22,0.0,abs(lam))*day;',
+'    vec3 lit=base*day*mix(0.40,1.0,limb)*shade;',
+'    lit=mix(lit,lit*vec3(1.22,0.86,0.66),twil*0.55);',
+'    lit+=base*0.05*night*limb;',
+
+/* Полярного сияния тут нет намеренно: диск больше экрана, полюса всегда
+   за кадром, и код светил бы в пустоту. Гроза — другое дело, ночная кромка
+   в кадре есть. */
+/* Гроза: короткая вспышка в облаках ночной стороны. Место и время берём
+   от хеша получаса — вспышка редкая и всегда в новом месте. */
+'    if(night>0.4){',
+'      float slot=floor(uT*1.6);',
+'      float ph=fract(uT*1.6);',
+'      vec3 lp=normalize(vec3(hash11(slot)*2.0-1.0,hash11(slot+7.3)*2.0-1.0,hash11(slot+19.1)*2.0-1.0));',
+'      float fl=smoothstep(0.10,0.0,ph)*step(0.86,hash11(slot+3.1));',
+'      float dd=length(n-lp);',
+'      lit+=vec3(0.55,0.75,1.0)*fl*night*smoothstep(0.22,0.0,dd)*1.4;',
+'    }',
+
+/* Атмосфера у лимба: чем косее взгляд, тем длиннее путь через газ. */
+'    float fres=pow(1.0-max(z,0.0),3.0);',
+/* Блик на облачных вершинах у подсолнечной точки: дымка рассеивает вперёд,
+   и атмосфера перестаёт быть матовой краской. */
+'    lit+=vec3(0.20,0.34,0.44)*pow(max(lam,0.0),6.0)*(0.35+0.65*veil)*0.55;',
+'    lit+=vec3(0.17,0.40,0.60)*fres*day*1.05;',
+'    lit+=vec3(0.10,0.26,0.42)*pow(1.0-max(z,0.0),6.0)*(0.35+0.65*day);',
+'    col=lit; alpha=1.0;',
+
+'    vec4 ring=ringAt(qRing,rRing,night);',
+'    if(ring.a>0.0&&tRing>z){ col=mix(col,ring.rgb,ring.a); }',
+'  } else {',
+/* Вне диска: свечение атмосферы и кольцо. У самого терминатора свечение
+   краснеет — тот же длинный путь через газ. */
+'    float dist=sqrt(d2);',
+'    float glow=exp(-(dist-1.0)/0.062);',
+'    float side=dot(normalize(vec3(uv,0.0)),SUN);',
+'    float lit=0.45+0.55*smoothstep(-0.35,0.65,side);',
+'    vec3 gcol=mix(vec3(0.22,0.12,0.10),vec3(0.15,0.38,0.56),smoothstep(-0.15,0.45,side));',
+'    col=gcol*glow*lit*1.25;',
+'    col+=vec3(0.10,0.24,0.38)*exp(-(dist-1.0)/0.22)*0.30*lit;',
+'    alpha=clamp(glow*0.9+exp(-(dist-1.0)/0.22)*0.22,0.0,1.0);',
+'    vec4 ring=ringAt(qRing,rRing,0.0);',
+'    if(ring.a>0.0){ col=mix(col,ring.rgb,ring.a); alpha=max(alpha,ring.a); }',
+'  }',
+
+/* --- луны --- */
+'  vec3 u1=normalize(cross(AXIS,vec3(0.0,0.0,1.0)));',
+'  vec3 v1=cross(AXIS,u1);',
+'  for(int i=0;i<3;i++){',
+'    float fi=float(i);',
+'    float orb=1.34+fi*0.46;',
+'    float ang=uT*(0.030-fi*0.007)+fi*2.2+1.1;',
+'    vec3 mp=(u1*cos(ang)+v1*sin(ang))*orb;',
+'    float mr=0.060-fi*0.014;',
+'    vec2 md=uv-mp.xy;',
+'    float mm=length(md)/mr;',
+'    float zs=d2<1.0?sqrt(max(0.0,1.0-d2)):-9.0;',
+'    if(mm<1.0&&mp.z>zs){',
+'      float mz=sqrt(max(0.0,1.0-mm*mm));',
+'      vec3 mn=vec3(md/mr,mz);',
+'      float ml=smoothstep(-0.18,0.60,dot(mn,SUN));',
+'      float crat=0.5+0.5*fbm3(mn*7.5+fi*17.0);',
+'      vec3 mc=mix(vec3(0.10,0.13,0.17),vec3(0.56,0.60,0.65),ml)*(0.62+0.62*crat);',
+/* Пепельный свет: ночную сторону луны подсвечивает сама планета. */
+'      mc+=vec3(0.07,0.13,0.18)*(1.0-ml)*smoothstep(0.0,-0.6,mn.z*0.0-dot(mn,normalize(-mp)))*0.9;',
+/* Затмение: луна в тени планеты гаснет, но не в ноль. */
+'      mc*=mix(0.22,1.0,sphereShadow(mp));',
+'      float e=smoothstep(1.0,0.82,mm);',
+'      col=mix(col,mc,e); alpha=max(alpha,e);',
+'    }',
+'    if(d2<1.0){',
+'      vec3 P=vec3(uv,zs);',
+'      vec3 wv=mp-P; float tt=dot(wv,SUN);',
+'      if(tt>0.0){',
+'        float h=length(wv-SUN*tt);',
+'        col*=mix(0.28,1.0,smoothstep(mr*0.5,mr*1.7,h));',
+'      }',
+'    }',
+'  }',
+
+'  col=max(col,0.0);',
+/* Экспозиция ниже, чем хотелось бы «на витрине»: планета — подложка под
+   текст, а не картина. На стенде она выглядит темнее, в кадре — правильно. */
+'  col=col/(col+vec3(0.94))*1.16;',
+'  gl_FragColor=vec4(col,alpha);',
+'}'
+
+  ].join('\n');
+
+  function shader(type, src){
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+      if(window.NOVIKOV_DEBUG) console.error('[orb]', gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
+  }
+  var vs = shader(gl.VERTEX_SHADER, VERT), fs = shader(gl.FRAGMENT_SHADER, FRAG);
+  if(!vs || !fs) return;
+  var prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+    if(window.NOVIKOV_DEBUG) console.error('[orb]', gl.getProgramInfoLog(prog));
+    return;
+  }
+  gl.useProgram(prog);
+
+  /* Один треугольник вместо двух: экономит ровно ничего по кадрам, но и
+     буфер, и вызов проще. */
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  var loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  var uRes = gl.getUniformLocation(prog, 'uRes');
+  var uSph = gl.getUniformLocation(prog, 'uSph');
+  var uT   = gl.getUniformLocation(prog, 'uT');
+
+  gl.enable(gl.BLEND);
+  gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.clearColor(0, 0, 0, 0);
+
+  /* Разрешение занижено намеренно: планета мягкая, разницы не видно, а
+     полноэкранный шум с пятью октавами стоит дорого на слабых машинах. */
+  var TARGET = window.NOVIKOV_ORB_SCALE || 0.72;
+  var SCALE = TARGET;
+  var W = 0, H = 0, cw = 0, ch = 0;
+
+  function layout(){
+    var r = host.getBoundingClientRect();
+    cw = Math.max(1, Math.round(r.width));
+    ch = Math.max(1, Math.round(r.height));
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.6) * SCALE;
+    W = Math.max(1, Math.round(cw * dpr));
+    H = Math.max(1, Math.round(ch * dpr));
+    canvas.width = W; canvas.height = H;
+    canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
+    gl.viewport(0, 0, W, H);
+  }
+
+  /* Геометрия диска повторяет CSS-версию один в один, чтобы при переключении
+     на шейдер планета не прыгнула: сторона сцены S = min(212vh, 172vw),
+     центр смещён на -0.40S вправо и -0.30S вниз, радиус 0.34S. */
+  function sphere(){
+    var vh = window.innerHeight / 100, vw = window.innerWidth / 100, W = window.innerWidth;
+    /* Три раскладки — ровно те же, что в CSS-запаске. Держать их врозь
+       нельзя: при подмене градиентной планеты на шейдер диск прыгнет. */
+    if(W <= 640){
+      var Sm = Math.min(150 * vh, 230 * vw);
+      return [cw - 0.183 * Sm, ch + 0.20 * Sm, 0.34 * Sm];
+    }
+    if(W <= 1000){
+      var St = Math.min(150 * vh, 200 * vw);
+      return [cw - 0.08 * St, ch - 0.24 * St, 0.34 * St];
+    }
+    var S = Math.min(212 * vh, 172 * vw);
+    return [cw - 0.10 * S, ch - 0.26 * S, 0.34 * S];
+  }
+
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var raf = 0, visible = true, last = -1e9, first = true;
+  var MIN_DT = 1000 / 30;                 /* планета медленная, тридцати хватает */
+
+  /* Подстройка под машину. Полноэкранный шум — самая дорогая вещь на
+     странице, и на слабом железе он утягивает за собой весь тикер gsap:
+     заголовок перестаёт выезжать, прокрутка дёргается. Поэтому меряем время
+     кадра и опускаем разрешение, пока не уложимся. Планета мягкая, потерю
+     резкости на ней не видно. */
+  var acc = 0, accN = 0, giveUp = 0;
+  function bail(){
+    /* Машина не тянет даже на минимальном разрешении. Это не повод показывать
+       слайд-шоу: снимаем холст и возвращаем градиентную планету — она стоит
+       ноль и выглядит достойно. */
+    visible = false;
+    host.classList.remove('orb--gl');
+    if(canvas.parentNode) canvas.parentNode.removeChild(canvas);
+    var ext = gl.getExtension('WEBGL_lose_context');
+    if(ext) ext.loseContext();
+    if(window.NOVIKOV_DEBUG) console.log('[orb] шейдер снят: машина не тянет');
+  }
+  function adapt(ms){
+    /* Один совсем тяжёлый кадр — не ждём статистики, роняем разрешение сразу. */
+    if(ms > 90){
+      acc = 0; accN = 0;
+      if(SCALE > 0.24){ SCALE = Math.max(0.24, SCALE * 0.6); layout(); return; }
+      if(++giveUp > 3 && !window.NOVIKOV_ORB_FORCE) bail();
+      return;
+    }
+    acc += ms; accN++;
+    if(accN < 8) return;
+    var avg = acc / accN; acc = 0; accN = 0;
+    if(avg > 26 && SCALE > 0.24){ SCALE = Math.max(0.24, SCALE * 0.75); layout(); }
+    else if(avg < 9 && SCALE < TARGET){ SCALE = Math.min(TARGET, SCALE * 1.15); layout(); }
+  }
+
+  function frame(now){
+    raf = 0;
+    if(!visible) return;
+    if(now - last < MIN_DT){ raf = requestAnimationFrame(frame); return; }
+    var t1 = now;
+    last = now;
+    var s = sphere();
+    gl.uniform2f(uRes, W, H);
+    gl.uniform3f(uSph, s[0] * (W / cw), s[1] * (H / ch), s[2] * (W / cw));
+    gl.uniform1f(uT, (now - t0) / 1000);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if(first){ first = false; host.classList.add('orb--gl'); canvas.style.opacity = '1'; }
+    /* Время кадра снимаем по следующему rAF: сам вызов drawArrays возвращается
+       мгновенно, работа происходит уже в драйвере. */
+    raf = requestAnimationFrame(function(n2){ adapt(n2 - t1); frame(n2); });
+  }
+  function kick(){ if(!raf && visible) raf = requestAnimationFrame(frame); }
+
+  /* Стартуем не сразу: первым делом странице нужно поднять сцену спутника и
+     показать заголовок. Полноэкранный шум, влезший в этот момент, отодвигает
+     и то и другое — на стенде из-за этого включалась статическая запаска
+     разбора и ломала закреплённый раздел. */
+  function start(){
+    host.insertBefore(canvas, host.firstChild);
+    layout();
+    kick();
+  }
+  var idleStart = window.requestIdleCallback || function(fn){ return setTimeout(fn, 400); };
+  if(document.readyState === 'complete') idleStart(start, {timeout:1500});
+  else window.addEventListener('load', function(){ idleStart(start, {timeout:1500}); });
+
+  var rTimer = 0;
+  window.addEventListener('resize', function(){
+    clearTimeout(rTimer);
+    rTimer = setTimeout(function(){ layout(); last = -1e9; kick(); }, 140);
+  }, {passive:true});
+
+  /* За кадром не считаем ничего: шейдер полноэкранный, и ниже по странице
+     он бы просто жёг батарею. */
+  var hero = document.getElementById('hero');
+  if(hero && window.IntersectionObserver){
+    new IntersectionObserver(function(es){
+      visible = es[0].isIntersecting;
+      if(visible){ last = -1e9; kick(); }
+    }, {rootMargin:'8% 0px'}).observe(hero);
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden){ last = -1e9; kick(); }
+  });
+
+  /* Отладочная ручка в духе xplScene: разрешение, состояние и синхронный
+     замер стоимости кадра. Замер нужен именно синхронный — в фоновой вкладке
+     requestAnimationFrame не тикает, и по нему машину не оценишь. */
+  window.orbGl = {
+    draw: function(){
+      var s = sphere();
+      gl.uniform2f(uRes, W, H);
+      gl.uniform3f(uSph, s[0] * (W / cw), s[1] * (H / ch), s[2] * (W / cw));
+      gl.uniform1f(uT, ((window.performance ? performance.now() : Date.now()) - t0) / 1000);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    },
+    bench: function(n){
+      n = n || 12;
+      this.draw(); gl.finish();
+      var t = performance.now();
+      for(var i = 0; i < n; i++) this.draw();
+      gl.finish();
+      return {ms: +((performance.now() - t) / n).toFixed(2), w: W, h: H, scale: +SCALE.toFixed(3)};
+    },
+    state: function(){ return {w: W, h: H, scale: SCALE, visible: visible, on: host.classList.contains('orb--gl')}; }
+  };
+
+  /* Контекст могут отобрать — тогда молча возвращаемся к CSS-планете. */
+  canvas.addEventListener('webglcontextlost', function(e){
+    e.preventDefault(); visible = false; host.classList.remove('orb--gl');
+  });
+})();
+</script>
 <script defer src="novikov-gl.js"></script>
 
 </body>

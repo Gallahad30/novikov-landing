@@ -194,7 +194,9 @@ html:not(.js) .cards .card.rv > *{opacity:1;transform:none}
 /* ============================================================
    01 ОФФЕР
    ============================================================ */
-.hero{padding-top:clamp(112px,15vh,168px);padding-bottom:clamp(48px,6vw,88px);overflow:hidden}
+.hero{padding-top:clamp(112px,15vh,168px);padding-bottom:clamp(48px,6vw,88px);
+  overflow:hidden;position:relative;min-height:100svh;display:flex;align-items:center}
+.hero>.wrap{position:relative;z-index:1;width:100%}
 .hero__name{font-family:var(--mono);font-size:.72rem;font-weight:500;letter-spacing:.2em;text-transform:uppercase;
   color:var(--graphite);margin:0 0 26px;display:flex;align-items:center;gap:12px}
 .hero__name i{width:9px;height:9px;background:var(--pencil);border-radius:1px;display:block;font-style:normal;
@@ -294,7 +296,10 @@ html:not(.js) .hero__offer u::after{transform:none}
   .xpl__item h3{font-size:.98rem}
   .xpl__item p{font-size:.86rem}
 }
-.xpl__view{position:relative;height:min(56vh,520px);perspective:1700px;perspective-origin:50% 46%}
+/* Потолок в 520 px резал сцену на высоких экранах: при 1300 px высоты холст
+   занимал 40 % секции, а низ оставался пустым. Держим долю экрана, потолок
+   поднимаем — 56vh при 860 px даёт те же 482, а при 1300 уже 728. */
+.xpl__view{position:relative;height:min(56vh,820px);perspective:1700px;perspective-origin:50% 46%}
 @media (max-width:1000px){ .xpl__view{height:min(42vh,360px)} }
 .xpl__stack{position:absolute;inset:0;transform-style:preserve-3d;
   transform:translateX(-21%) rotateX(62deg) rotateZ(-28deg) scale(.95)}
@@ -771,127 +776,270 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
 @media (prefers-reduced-motion:reduce){ .sky>*{will-change:auto} }
 
 /* --- планета в первом экране --- */
-/* Собственные токены: планета — иллюстрация, роли интерфейсной палитры не трогаем. */
+/* Собственные токены: планета — иллюстрация, роли интерфейсной палитры не трогаем.
+   Диск заведомо больше экрана: видно лимб и кусок атмосферы, центр за кадром
+   справа снизу. Поэтому planet живёт подложкой секции, а не ячейкой сетки. */
 .orb{
-  --orb-hi:#5A93B8; --orb-mid:#27536F; --orb-lo:#0E2740; --orb-deep:#050D18;
-  --orb-warm:#C98A5E; --orb-ring:rgba(153,196,224,.55);
-  align-self:start;position:relative;aspect-ratio:1;width:100%;max-width:390px;
-  margin-inline:auto;display:grid;place-items:center;isolation:isolate}
+  --orb-hi:#5F91B2; --orb-mid:#24506D; --orb-lo:#0A2035; --orb-deep:#03070D;
+  --orb-warm:#C98A5E; --orb-ring:rgba(153,196,224,.5);
+  --orb-size:min(212vh,172vw);
+  --orb-x:-.40;            /* сдвиг центра за правый край, в долях размера */
+  --orb-y:-.30;            /* и вниз: в кадре остаётся верхний левый лимб */
+  position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  contain:paint}
 .orb>*{position:absolute}
+.orb__stage{width:var(--orb-size);height:var(--orb-size);
+  right:calc(var(--orb-size) * var(--orb-x));
+  bottom:calc(var(--orb-size) * var(--orb-y))}
+.orb__stage>*{position:absolute}
+/* Слои атмосферы лежат внутри диска, а не рядом с ним: без этого правила
+   у них `position:static`, `inset` не действует, высота нулевая — и весь
+   разбор атмосферы просто не рисуется. Молча: ошибок нет, фон есть,
+   элемента на экране нет. */
+.orb__body>*{position:absolute}
 
-/* свечение атмосферы наружу */
-/* Ободок атмосферы снаружи диска: старт градиента привязан к краю тела,
-   иначе свечение заливает сам диск и планета превращается в лампу. */
-.orb__glow{inset:6%;border-radius:50%;
-  background:radial-gradient(circle,transparent 58%,rgba(99,205,242,.20) 66%,
-             rgba(47,159,208,.09) 77%,transparent 89%);
-  filter:blur(6px);animation:orbBreath 9s ease-in-out infinite}
+/* свечение атмосферы наружу: старт градиента привязан к краю тела, иначе
+   заливает сам диск и планета превращается в лампу. Без blur — на таком
+   размере фильтр стоит кадров, а мягкости хватает от самого градиента. */
+.orb__glow{inset:10%;border-radius:50%;
+  background:radial-gradient(circle,transparent 62%,rgba(99,205,242,.17) 67%,
+             rgba(47,159,208,.075) 75%,transparent 86%);
+  opacity:.92}
 
 /* Кольцо: задняя половина уходит за диск, передняя ложится поверх.
    Деления рисуем провалами между вложенными обводками — по ним глаз и
    опознаёт кольцо. Штриховка сверху добавляет мелкие колечки. */
-.orb__ring{left:3%;right:3%;top:43.5%;height:31%;border-radius:50%;
+.orb__ring{left:11.5%;right:11.5%;top:39.5%;height:21%;border-radius:50%;
   border:1px solid var(--orb-ring);
   box-shadow:
     inset 0 0 0 2px  rgba(176,214,238,.34),
-    inset 0 0 0 4px  rgba(120,160,190,.05),   /* деление */
-    inset 0 0 0 7px  rgba(186,220,242,.30),
-    inset 0 0 0 10px rgba(146,186,214,.16),
-    inset 0 0 0 11px rgba(90,120,150,.03),    /* деление */
-    inset 0 0 0 15px rgba(198,226,244,.22),
-    inset 0 0 0 19px rgba(150,190,220,.09);
-  transform:rotate(-15deg)}
-/* мелкая штриховка по кольцу */
+    inset 0 0 0 5px  rgba(120,160,190,.05),   /* деление */
+    inset 0 0 0 9px  rgba(186,220,242,.30),
+    inset 0 0 0 13px rgba(146,186,214,.16),
+    inset 0 0 0 15px rgba(90,120,150,.03),    /* деление */
+    inset 0 0 0 21px rgba(198,226,244,.22),
+    inset 0 0 0 27px rgba(150,190,220,.10);
+  transform:rotate(-13deg)}
 .orb__ring::before{content:"";position:absolute;inset:0;border-radius:50%;
   background:repeating-conic-gradient(from 0deg,
-    rgba(226,240,250,.10) 0deg 1.4deg, rgba(0,0,0,.10) 1.4deg 2.8deg);
-  -webkit-mask:radial-gradient(closest-side,transparent 62%,#000 66%,#000 99%,transparent);
-  mask:radial-gradient(closest-side,transparent 62%,#000 66%,#000 99%,transparent);
-  opacity:.5;mix-blend-mode:overlay}
+    rgba(226,240,250,.10) 0deg 1.1deg, rgba(0,0,0,.10) 1.1deg 2.2deg);
+  -webkit-mask:radial-gradient(closest-side,transparent 66%,#000 70%,#000 99%,transparent);
+  mask:radial-gradient(closest-side,transparent 66%,#000 70%,#000 99%,transparent);
+  opacity:.45;mix-blend-mode:overlay}
 .orb__ring--back{clip-path:inset(0 0 50% 0)}
-.orb__ring--front{clip-path:inset(50% 0 0 0);opacity:.9}
+.orb__ring--front{clip-path:inset(50% 0 0 0);opacity:.85}
 /* тень планеты на передней дуге: без неё кольцо висит отдельно от шара */
-.orb__ring--front::after{content:"";position:absolute;left:24%;right:24%;top:0;bottom:0;
+.orb__ring--front::after{content:"";position:absolute;left:26%;right:26%;top:0;bottom:0;
   border-radius:50%;
-  background:radial-gradient(ellipse 52% 120% at 46% 40%,rgba(2,5,11,.58),rgba(2,5,11,.28) 58%,transparent 76%);
-  filter:blur(4px)}
+  background:radial-gradient(ellipse 52% 120% at 46% 40%,rgba(2,5,11,.55),rgba(2,5,11,.26) 58%,transparent 76%)}
 
 /* сам диск */
-.orb__body{inset:22%;border-radius:50%;overflow:hidden;
-  background:radial-gradient(circle at 36% 32%,var(--orb-hi) 0%,var(--orb-mid) 42%,var(--orb-lo) 74%,var(--orb-deep) 100%);
-  box-shadow:0 0 60px -14px rgba(47,159,208,.5)}
-/* тень от кольца на самом диске — она и связывает кольцо с шаром */
-.orb__body::after{content:"";position:absolute;left:-8%;right:-8%;top:46.5%;height:8%;
-  background:linear-gradient(90deg,transparent,rgba(2,6,14,.52) 16%,rgba(2,6,14,.60) 84%,transparent);
-  transform:rotate(-15deg);filter:blur(4px);opacity:.52;z-index:3}
+.orb__body{inset:16%;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 31% 27%,var(--orb-hi) 0%,var(--orb-mid) 34%,
+             var(--orb-lo) 66%,var(--orb-deep) 96%)}
+/* тень от кольца на диске — она и связывает кольцо с шаром */
+.orb__body::after{content:"";position:absolute;left:-10%;right:-10%;top:47%;height:6.5%;
+  background:linear-gradient(90deg,transparent,rgba(2,6,14,.5) 18%,rgba(2,6,14,.58) 82%,transparent);
+  transform:rotate(-13deg);opacity:.5;z-index:6}
 
-/* широтные пояса газового гиганта */
-/* Две частоты: широкие пояса и тонкие струи между ними. Одной частоты
-   мало — полосы читаются как обои, а не как атмосфера. */
-.orb__bands{inset:0;opacity:.6;mix-blend-mode:overlay;
+/* Широтные пояса. На весь экран прямые полосы читаются обоями, поэтому
+   дуги: повторяющийся эллиптический градиент с центром далеко над полюсом
+   даёт линии, которые загибаются вслед за шаром. Две частоты — широкие
+   пояса и тонкие струи между ними. */
+/* Пояса и струи — один слой в два фона. Смешивание не используем: слой во
+   весь экран с `mix-blend-mode` стоит композитору отдельного буфера, а их
+   тут было девять. Контраст добираем прозрачностью. */
+/* Зоны, а не линейка. Повторяющийся градиент даёт постоянный шаг, и на
+   весь экран это читается вельветом. Здесь девять именованных зон разной
+   ширины и яркости — как на снимках гиганта: широкий тёмный пояс у
+   экватора, светлые зоны выше и ниже, тонкие струи между ними. Каждая
+   зона — эллипс, вытянутый шире диска, поэтому края уходят за лимб и
+   полоса не обрывается. */
+.orb__bands{inset:0;
   background:
-    repeating-linear-gradient(6deg,
-      rgba(255,255,255,.045) 0 .8%,
-      rgba(0,0,0,.055) .8% 1.7%),
-    repeating-linear-gradient(6deg,
-      rgba(255,255,255,.10) 0 3%,
-      rgba(0,0,0,.14) 3% 6.5%,
-      rgba(255,255,255,.05) 6.5% 9%,
-      rgba(0,0,0,.08) 9% 13%)}
+    radial-gradient(ellipse 170% 5.5% at 50% 43.5%,rgba(2,7,14,.26),transparent 76%),
+    radial-gradient(ellipse 168% 2.6% at 50% 38.5%,rgba(214,236,250,.15),transparent 78%),
+    radial-gradient(ellipse 166% 3.4% at 50% 49.5%,rgba(214,236,250,.12),transparent 78%),
+    radial-gradient(ellipse 162% 4.2% at 50% 55.5%,rgba(2,7,14,.19),transparent 76%),
+    radial-gradient(ellipse 158% 2.2% at 50% 61%,rgba(214,236,250,.1),transparent 78%),
+    radial-gradient(ellipse 152% 3.6% at 50% 67%,rgba(2,7,14,.15),transparent 76%),
+    radial-gradient(ellipse 164% 3%   at 50% 31%,rgba(2,7,14,.17),transparent 76%),
+    radial-gradient(ellipse 158% 2%   at 50% 25%,rgba(214,236,250,.11),transparent 78%),
+    radial-gradient(ellipse 150% 2.6% at 50% 18.5%,rgba(2,7,14,.13),transparent 78%),
+    /* струи: единственная частая полоса, и та еле видна */
+    repeating-radial-gradient(ellipse 176% 128% at 50% -54%,
+      rgba(226,240,250,.022) 0 .42%, rgba(3,10,20,.02) .42% 1.02%)}
 
-/* облачная рябь: шум по порогу, медленно едет по диску */
-.orb__clouds{inset:-30% -60%;opacity:.30;mix-blend-mode:soft-light;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='.012 .06' numOctaves='4' seed='9'/><feColorMatrix type='saturate' values='0'/></filter><rect width='320' height='320' filter='url(%23c)'/></svg>");
-  background-size:60% 60%;animation:orbDrift 46s linear infinite}
+/* Облачная рябь: три слоя шума с разной частотой и разной скоростью —
+   так читается дифференциальное вращение, у гиганта экватор идёт быстрее
+   умеренных широт. Плитка кратна сдвигу, иначе на стыке видно шов. */
+.orb__clouds{inset:-10% -35%;background-repeat:repeat;
+  will-change:transform;animation:orbDrift 68s linear infinite}
+.orb__clouds--a{opacity:.3;background-size:20% 100%;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='360'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='.006 .045' numOctaves='5' seed='11'/><feColorMatrix type='saturate' values='0'/></filter><rect width='360' height='360' filter='url(%23c)'/></svg>")}
+.orb__clouds--b{opacity:.22;background-size:12.5% 62%;
+  animation-duration:38s;animation-direction:reverse;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='360'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='.02 .1' numOctaves='4' seed='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='360' height='360' filter='url(%23c)'/></svg>")}
+.orb__clouds--c{display:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='360'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='.045 .17' numOctaves='3' seed='21'/><feColorMatrix type='saturate' values='0'/></filter><rect width='360' height='360' filter='url(%23c)'/></svg>")}
 
-/* большое пятно-шторм с закруткой */
-.orb__storm{left:18%;top:52%;width:34%;height:19%;border-radius:50%;
-  transform:rotate(-8deg);
+
+/* Большое пятно: овал с закруткой. Спираль — повторяющийся конический
+   градиент под маской овала, вращается медленно и отдельно от облаков. */
+/* Пятно должно читаться вихрем в поясе, а не пятном краски: ядро тёплое и
+   плотное, вокруг него тёмный обод, снаружи — светлая кайма потока. */
+/* Пятно живёт в атмосфере, а не лежит на ней: плотного ядра нет, край
+   растворяется задолго до габарита, общая прозрачность держит его в тоне
+   пояса. Иначе на диске появляется наклейка. */
+.orb__storm{left:33%;top:41%;width:13%;height:5.4%;border-radius:50%;
+  transform:rotate(-6deg);overflow:hidden;opacity:.5;
   background:
-    radial-gradient(ellipse at 40% 40%,rgba(232,190,160,.55),transparent 46%),
-    radial-gradient(ellipse at 42% 42%,rgba(201,138,94,.85),rgba(150,84,52,.55) 55%,transparent 78%);
-  box-shadow:0 0 18px rgba(201,138,94,.35);opacity:.85}
-/* вторая буря, поменьше и в другом поясе: одна на диске выглядит наклейкой */
-.orb__storm::after{content:"";position:absolute;left:172%;top:-190%;width:52%;height:34%;
-  border-radius:50%;transform:rotate(6deg);
-  background:radial-gradient(ellipse at 45% 45%,rgba(226,206,180,.55),rgba(170,150,128,.30) 58%,transparent 80%);
-  opacity:.8}
-
-/* полярные шапки */
-.orb__caps{inset:0;
+    radial-gradient(ellipse at 47% 44%,rgba(242,212,186,.34),transparent 52%),
+    radial-gradient(ellipse at 50% 50%,rgba(196,128,84,.44) 0 30%,
+      rgba(126,70,42,.26) 54%,rgba(70,40,26,.12) 74%,transparent 92%);
+  box-shadow:inset 0 0 26px rgba(52,26,14,.28)}
+/* Закрутка без спиц: конический градиент на овале всегда даёт лучи из
+   центра. Два смещённых полупрозрачных овала при медленном вращении дают
+   то же ощущение вихря и ничего не выдают. */
+.orb__storm::before{content:"";position:absolute;inset:6%;border-radius:50%;
   background:
-    radial-gradient(ellipse 62% 16% at 50% 2%,rgba(226,240,250,.5),transparent 70%),
-    radial-gradient(ellipse 54% 13% at 50% 99%,rgba(226,240,250,.35),transparent 70%)}
+    radial-gradient(ellipse 62% 74% at 38% 42%,rgba(255,236,214,.16),transparent 68%),
+    radial-gradient(ellipse 54% 62% at 64% 58%,rgba(120,64,38,.2),transparent 70%);
+  will-change:transform;animation:orbSwirl 54s linear infinite}
+.orb__storm::after{content:"";position:absolute;inset:0;border-radius:50%;
+  box-shadow:inset 0 0 24px rgba(90,44,24,.5)}
+
+/* Светлые овалы в других поясах: одно пятно на диске выглядит наклейкой */
+.orb__ovals{inset:0;opacity:.55;
+  background:
+    radial-gradient(ellipse 4.2% 1.9% at 66% 39%,rgba(232,242,250,.55),transparent 72%),
+    radial-gradient(ellipse 3.1% 1.5% at 33% 63%,rgba(226,236,246,.42),transparent 74%),
+    radial-gradient(ellipse 2.4% 1.2% at 58% 70%,rgba(226,236,246,.38),transparent 76%),
+    radial-gradient(ellipse 5.6% 1.6% at 44% 30%,rgba(216,232,244,.3),transparent 78%),
+    /* полярные шапки — сюда же, отдельный слой ради двух градиентов не нужен */
+    radial-gradient(ellipse 58% 13% at 50% 1%,rgba(226,240,250,.42),transparent 72%),
+    radial-gradient(ellipse 50% 11% at 50% 99%,rgba(226,240,250,.28),transparent 72%)}
+
+
+/* Тень луны на диске: медленный транзит поперёк планеты. Деталь дешёвая,
+   а читается сразу — по ней глаз понимает, что перед ним шар, а не круг. */
+.orb__shade{left:6%;top:40%;width:1.5%;height:1.5%;border-radius:50%;z-index:5;
+  will-change:transform;
+  background:radial-gradient(circle,rgba(2,5,10,.62) 0 42%,rgba(2,5,10,.26) 66%,transparent 88%);
+  animation:orbTransit 165s linear infinite}
 
 /* терминатор: ночная сторона и потемнение к краю */
-.orb__night{inset:0;
+.orb__night{inset:0;z-index:4;
   background:
-    radial-gradient(circle at 34% 30%,transparent 40%,rgba(3,7,14,.55) 78%,rgba(2,4,9,.88) 100%),
-    linear-gradient(108deg,transparent 42%,rgba(2,5,11,.72) 88%)}
+    radial-gradient(circle at 30% 26%,transparent 30%,rgba(3,7,14,.42) 62%,rgba(2,4,9,.92) 96%),
+    /* Слева диск обязан уйти в фон: там текст. Гасим не общей заливкой,
+       а косой — по направлению того же терминатора. */
+    linear-gradient(104deg,rgba(3,7,15,.72) 0 6%,rgba(3,7,15,.3) 18%,transparent 34%),
+    linear-gradient(104deg,transparent 44%,rgba(2,5,11,.62) 92%)}
 
 /* краевая подсветка атмосферы */
-.orb__rim{inset:0;border-radius:50%;
-  box-shadow:inset 0 0 0 1px rgba(153,205,236,.45), inset 6px 8px 26px -14px rgba(180,225,255,.75)}
+.orb__rim{inset:0;border-radius:50%;z-index:5;
+  box-shadow:inset 0 0 0 2px rgba(153,205,236,.3),
+             inset 14px 18px 90px -60px rgba(180,225,255,.8)}
+/* Дымка над лимбом: узкая светлая кромка снаружи диска. Держим её кольцевым
+   градиентом, а не тенью, — тень на таком радиусе размывается в пятно. */
+/* Дымка живёт рядом с телом, а не внутри него: диск обрезан по кругу и
+   всё, что нарисовано внутри у самого края, превращается в обруч. */
+.orb__halo{inset:15.2%;border-radius:50%;
+  background:radial-gradient(circle,transparent 49.7%,rgba(150,214,246,.16) 50.3%,
+             rgba(120,190,230,.07) 52%,rgba(90,160,200,.03) 55%,transparent 60%);
+  will-change:transform,opacity;animation:orbBreath 13s ease-in-out infinite;z-index:2}
 
-/* спутник планеты */
-.orb__moon{width:5.5%;height:5.5%;border-radius:50%;left:8%;top:22%;
-  background:radial-gradient(circle at 34% 32%,#C9D6E2,#6C7B8B 62%,#232C38);
-  box-shadow:0 0 10px rgba(150,190,220,.35);
-  animation:orbMoon 26s linear infinite}
+/* Луны впереди: разные размеры, кратеры и свой терминатор. Ходят по
+   вытянутым дугам с разными периодами — рисунок не повторяется. */
+.orb__moons{inset:0}
+.orb__moons>span{position:absolute;display:block;border-radius:50%}
+.orb__moon{
+  box-shadow:inset -7px -5px 16px -6px rgba(2,5,11,.95), 0 0 26px rgba(120,170,205,.16)}
+.orb__moon--a{width:clamp(30px,3.5vw,58px);aspect-ratio:1;left:62%;top:47%;
+  background:
+    radial-gradient(circle at 62% 34%,rgba(255,255,255,.22) 0 7%,transparent 8%),
+    radial-gradient(circle at 38% 58%,rgba(2,6,12,.28) 0 9%,transparent 10%),
+    radial-gradient(circle at 47% 22%,rgba(2,6,12,.22) 0 5%,transparent 6%),
+    radial-gradient(circle at 70% 66%,rgba(2,6,12,.2) 0 6%,transparent 7%),
+    radial-gradient(circle at 34% 30%,#D3DEE8,#7C8B9B 60%,#28313D);
+  will-change:transform;animation:orbMoonA 92s ease-in-out infinite}
+.orb__moon--b{width:clamp(18px,2.1vw,34px);aspect-ratio:1;left:74%;top:66%;
+  background:
+    radial-gradient(circle at 55% 40%,rgba(2,6,12,.26) 0 11%,transparent 12%),
+    radial-gradient(circle at 33% 64%,rgba(255,255,255,.18) 0 8%,transparent 9%),
+    radial-gradient(circle at 36% 32%,#C6D2DE,#6D7E90 58%,#212A35);
+  animation:orbMoonB 137s ease-in-out infinite}
+.orb__moon--c{width:clamp(11px,1.3vw,22px);aspect-ratio:1;left:83%;top:29%;
+  background:
+    radial-gradient(circle at 60% 36%,rgba(2,6,12,.24) 0 13%,transparent 14%),
+    radial-gradient(circle at 36% 32%,#E0C6AE,#9C8672 58%,#2C2620);
+  animation:orbMoonC 71s ease-in-out infinite}
 
+/* Ширма: планета уходит под текст мягко, без прямоугольной кромки.
+   Косая — потому что и лимб идёт наискось. */
+.orb__scrim{inset:0;
+  background:
+    linear-gradient(101deg,var(--paper) 0 16%,rgba(7,11,20,.9) 30%,
+      rgba(7,11,20,.55) 44%,rgba(7,11,20,.12) 60%,transparent 72%),
+    linear-gradient(0deg,var(--paper) 0 2%,rgba(7,11,20,.5) 9%,transparent 22%)}
 
+@keyframes orbBreath{0%,100%{opacity:.85;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
+@keyframes orbDrift{to{transform:translateX(-20%)}}
+@keyframes orbSwirl{to{transform:rotate(360deg)}}
+@keyframes orbTransit{
+  0%   {transform:translate(0,0);opacity:0}
+  7%   {opacity:1}
+  92%  {opacity:1}
+  100% {transform:translate(2900%,320%);opacity:0}}
+/* Ход коротким держим намеренно: луны не должны заезжать на текст,
+   а на таком масштабе даже 4vw читаются как заметное движение. */
+@keyframes orbMoonA{
+  0%,100%{transform:translate(0,0)}
+  50%    {transform:translate(-4vw,4vh)}}
+@keyframes orbMoonB{
+  0%,100%{transform:translate(0,0)}
+  50%    {transform:translate(3.5vw,-3vh)}}
+@keyframes orbMoonC{
+  0%,100%{transform:translate(0,0)}
+  50%    {transform:translate(-3vw,3.5vh)}}
 
-@keyframes orbBreath{0%,100%{opacity:.85;transform:scale(1)}50%{opacity:1;transform:scale(1.025)}}
-@keyframes orbDrift{to{transform:translateX(33%)}}
-@keyframes orbMoon{
-  0%   {transform:translate(0,0) scale(1)}
-  25%  {transform:translate(300%,190%) scale(.85)}
-  50%  {transform:translate(560%,470%) scale(.7)}
-  75%  {transform:translate(240%,690%) scale(.9)}
-  100% {transform:translate(0,0) scale(1)}
+@media (max-width:1000px){
+  .orb{--orb-size:min(150vh,200vw);--orb-x:-.42;--orb-y:-.26;opacity:.72}
+  .orb__moon--a{left:58%} .orb__moon--b{left:70%}
+  .orb__scrim{background:
+    linear-gradient(101deg,var(--paper) 0 10%,rgba(7,11,20,.9) 26%,
+      rgba(7,11,20,.6) 46%,rgba(7,11,20,.2) 66%,transparent 80%),
+    linear-gradient(0deg,var(--paper) 0 3%,rgba(7,11,20,.55) 12%,transparent 26%)}
 }
-@media (max-width:1000px){ .orb{display:none} }
-@media (prefers-reduced-motion:reduce){ .orb *{animation:none !important} }
+/* Тяжёлые украшения — после загрузки. Повторяющиеся градиенты и штриховка
+   кольца считаются попиксельно; на слое во весь экран это задерживает первую
+   отрисовку, и заголовок не успевает выехать из-под маски. Класс `orb--rich`
+   ставит JS в простое. */
+.orb__bands,.orb__clouds,.orb__ovals,.orb__ring::before,.orb__storm::before{
+  opacity:0;transition:opacity 1.1s ease}
+.orb--rich .orb__bands{opacity:1}
+.orb--rich .orb__clouds--a{opacity:.3}
+.orb--rich .orb__clouds--b{opacity:.22}
+.orb--rich .orb__ovals{opacity:.55}
+.orb--rich .orb__ring::before{opacity:.45}
+.orb--rich .orb__storm::before{opacity:1}
+
+/* За кадром планета не видна, а слои композитор всё равно считает.
+   Класс вешает наблюдатель пересечения по первому экрану. */
+.orb--rest *{animation-play-state:paused !important}
+@media (max-width:640px){ .orb{display:none} }
+/* При выключенной анимации облачные слои не нужны вовсе: они и есть
+   движение. Заодно страница перестаёт тратить на них растеризацию —
+   в этом режиме показ блоков идёт без ScrollSmoother и особенно чувствителен
+   к занятому главному потоку. */
+@media (prefers-reduced-motion:reduce){
+  .orb *{animation:none !important}
+  .orb__clouds,.orb__shade{display:none}
+  /* штриховка кольца — повторяющийся конический градиент под маской, самый
+     дорогой слой на странице; в этом режиме его нет */
+  .orb__ring::before{display:none}
+}
 
 /* --- точки разделов справа --- */
 .dots{position:fixed;z-index:70;top:50%;transform:translateY(-50%);
@@ -1016,6 +1164,30 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 
   <!-- ========== 01 ОФФЕР ========== -->
   <section class="hero" id="hero" data-idx="01 / ОФФЕР" data-theme="light">
+    <div class="orb rv d2" id="heroOrb" data-speed="0.94" data-lag="0.08" aria-hidden="true">
+      <div class="orb__stage">
+        <div class="orb__glow"></div>
+        <div class="orb__ring orb__ring--back"></div>
+        <div class="orb__body">
+          <div class="orb__bands"></div>
+          <div class="orb__clouds orb__clouds--a"></div>
+          <div class="orb__clouds orb__clouds--b"></div>
+          <div class="orb__ovals"></div>
+          <div class="orb__storm"></div>
+          <div class="orb__shade"></div>
+          <div class="orb__night"></div>
+          <div class="orb__rim"></div>
+        </div>
+        <div class="orb__halo"></div>
+        <div class="orb__ring orb__ring--front"></div>
+      </div>
+      <div class="orb__moons">
+        <span class="orb__moon orb__moon--a"></span>
+        <span class="orb__moon orb__moon--b"></span>
+        <span class="orb__moon orb__moon--c"></span>
+      </div>
+      <div class="orb__scrim"></div>
+    </div>
     <div class="wrap">
       <div class="c1-8" id="heroCol">
         <p class="hero__name"><i aria-hidden="true"></i>дизайн и код · лендинги под ключ</p>
@@ -1033,20 +1205,6 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
         <p class="hero__hint rv d4">Отвечаю <kbd>в тот же день</kbd> · сборка <kbd>до 7 дней</kbd> · мелкие правки первый месяц бесплатно</p>
       </div>
 
-      <div class="orb c9-13 rv d2" id="heroOrb" data-speed="0.94" data-lag="0.08" aria-hidden="true">
-        <div class="orb__glow"></div>
-        <div class="orb__ring orb__ring--back"></div>
-        <div class="orb__body">
-          <div class="orb__bands"></div>
-          <div class="orb__clouds"></div>
-          <div class="orb__storm"></div>
-          <div class="orb__caps"></div>
-          <div class="orb__night"></div>
-          <div class="orb__rim"></div>
-        </div>
-        <div class="orb__ring orb__ring--front"></div>
-        <div class="orb__moon"></div>
-      </div>
     </div>
   </section>
 
@@ -1368,6 +1526,23 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   }
   var heroTimer = setTimeout(heroCss, 750);
 
+  /* Планета первого экрана: за кадром анимацию останавливаем. Ниже по
+     странице её всё равно не видно, а полдюжины слоёв композитор считает
+     на каждом кадре. */
+  (function(){
+    var orb = document.getElementById('heroOrb'), hero = document.getElementById('hero');
+    if(!orb || !hero || !window.IntersectionObserver) return;
+    new IntersectionObserver(function(es){
+      orb.classList.toggle('orb--rest', !es[0].isIntersecting);
+    }, {rootMargin:'10% 0px'}).observe(hero);
+
+    /* украшения — после загрузки и в простое */
+    var rich = function(){ orb.classList.add('orb--rich'); };
+    var idle = window.requestIdleCallback || function(fn){ return setTimeout(fn, 320); };
+    if(document.readyState === 'complete') idle(rich, {timeout:1200});
+    else window.addEventListener('load', function(){ idle(rich, {timeout:1200}); });
+  })();
+
   /* без GSAP или при отключённой анимации разбор показывается статикой */
   setTimeout(function(){
     var box=document.getElementById('xpl');
@@ -1380,16 +1555,25 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
      а не составлена из готовых блоков. */
   document.body.classList.add('bp');
 
-  /* ---------- появление при скролле ---------- */
+  /* ---------- появление при скролле ----------
+     При выключенной анимации показывать нечего: появление — это и есть
+     анимация. Открываем всё сразу и наблюдателя не заводим. Заодно уходит
+     давняя капризность: без ScrollSmoother досмотр висит на событии scroll,
+     тик у него раз в 220 мс, и на занятом потоке часть блоков оставалась
+     прозрачной до следующей прокрутки. */
+  if(reduce){
+    document.querySelectorAll('.rv').forEach(function(el){ el.classList.add('in'); });
+  }
   var io = new IntersectionObserver(function(es){
     es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
   }, {threshold:0.01, rootMargin:'0px 0px -4% 0px'});
-  document.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
+  if(!reduce) document.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
 
   /* ScrollSmoother двигает страницу трансформом, и при быстрой прокрутке
      IntersectionObserver успевает не всегда: блок остаётся непоказанным.
      Поэтому на каждом кадре досматриваем очередь — она только укорачивается. */
-  var pending = [].slice.call(document.querySelectorAll('.rv')), sweptAt = -1e9;
+  var pending = reduce ? [] : [].slice.call(document.querySelectorAll('.rv'));
+  var sweptAt = -1e9;
 
   /* Всё, что требует чтения геометрии, живёт на одном редком тике: каждый кадр
      читать раскладку нельзя — это принудительный пересчёт по всей странице. */

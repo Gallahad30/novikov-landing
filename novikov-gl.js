@@ -120,6 +120,16 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     key.shadow.camera.top = 9;   key.shadow.camera.bottom = -9;
     key.shadow.bias = -0.0016; key.shadow.normalBias = 0.02;
     key.shadow.radius = 3;
+    /* Солнце не прибито: медленно обходит сцену, блик ползёт по панелям.
+       Амплитуда маленькая — тени не должны перекладываться на глазах. */
+    var sunSwing = new THREE.Vector3();
+    function swingSun(t){
+      var a = Math.sin(t * 0.31) * 0.30, b = Math.sin(t * 0.19 + 1.1) * 0.10;
+      sunSwing.set(sunDir.x * Math.cos(a) - sunDir.z * Math.sin(a),
+                   sunDir.y + b,
+                   sunDir.x * Math.sin(a) + sunDir.z * Math.cos(a)).normalize();
+      key.position.copy(sunSwing).multiplyScalar(15);
+    }
     var rim = new THREE.DirectionalLight(0x9fd8f2, 0.85); rim.position.set(-7,2,-6); scene.add(rim);
     /* Второй контровой, с другой стороны: без него правые рёбра модулей
        сливаются с фоном и стопка читается силуэтом, а не набором деталей. */
@@ -592,6 +602,14 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
            а рамке выделения нужен размер, а не геометрия */
         m.g.userData.boxY = m.top + m.bot;
         m.g.userData.boxC = (m.top - m.bot) / 2;
+        /* Настоящий габарит в системе самого модуля. Кадр подбирается по нему:
+           паддинги и общий радиус по XZ дают коробку заметно крупнее корпуса,
+           и спутник от этого выходит мельче, чем мог бы. */
+        box.setFromObject(m.g);
+        m.g.userData.lb = [
+          box.min.x - m.g.position.x, box.min.y - m.g.position.y, box.min.z - m.g.position.z,
+          box.max.x - m.g.position.x, box.max.y - m.g.position.y, box.max.z - m.g.position.z
+        ];
         m.g.userData.isTop = (i === 0);
         cursor = m.g.userData.dy - m.bot - SLOT_GAP;
       }
@@ -634,21 +652,29 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
        чем трогать буфер каждый кадр. */
     var dust = new THREE.Group();
     (function(){
-      var N = small ? 90 : 220, pos = new Float32Array(N * 3);
-      for(var i = 0; i < N; i++){
-        var u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2,
-            r = 2.2 + Math.random() * 3.4, s = Math.sqrt(1 - u * u);
-        pos[i*3]   = Math.cos(th) * s * r;
-        pos[i*3+1] = u * r * 1.35;
-        pos[i*3+2] = Math.sin(th) * s * r;
-      }
-      var g2 = new THREE.BufferGeometry();
-      g2.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      dust.add(new THREE.Points(g2, new THREE.PointsMaterial({
-        color:0xBFE4F7, size:small ? 0.05 : 0.038, sizeAttenuation:true,
-        transparent:true, opacity:0, depthWrite:false,
-        blending:THREE.AdditiveBlending
-      })));
+      /* Два слоя: ближний крупнее и крутится быстрее. Один слой читается
+         плоской россыпью, два дают глубину почти даром. */
+      var layers = [
+        {n: small ?  60 : 150, r0: 2.2, r1: 5.6, size: small ? 0.045 : 0.034, col: 0xBFE4F7},
+        {n: small ?  34 :  80, r0: 1.6, r1: 3.2, size: small ? 0.065 : 0.052, col: 0xE6F3FC}
+      ];
+      layers.forEach(function(L){
+        var pos = new Float32Array(L.n * 3);
+        for(var i = 0; i < L.n; i++){
+          var u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2,
+              r = L.r0 + Math.random() * (L.r1 - L.r0), s = Math.sqrt(1 - u * u);
+          pos[i*3]   = Math.cos(th) * s * r;
+          pos[i*3+1] = u * r * 1.35;
+          pos[i*3+2] = Math.sin(th) * s * r;
+        }
+        var g2 = new THREE.BufferGeometry();
+        g2.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        dust.add(new THREE.Points(g2, new THREE.PointsMaterial({
+          color:L.col, size:L.size, sizeAttenuation:true,
+          transparent:true, opacity:0, depthWrite:false,
+          blending:THREE.AdditiveBlending
+        })));
+      });
     })();
     root.add(dust);
 
@@ -688,10 +714,25 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       composer.addPass(new A.OutputPass());
     }
 
+    /* Список слоёв лежит поверх правой части холста. Кадрировать спутника по
+       всей ширине нельзя — он встанет под текст. Меряем накрытую полосу
+       и потом сдвигаем кадр ровно на её половину. */
+    var listW = 0;
+    function measureList(){
+      listW = 0;
+      var el = document.querySelector('.xpl__list');
+      if(!el || window.innerWidth < 1001) return;
+      var st = getComputedStyle(el);
+      if(st.position !== 'absolute') return;
+      var r = el.getBoundingClientRect(), hr = host.getBoundingClientRect();
+      listW = Math.max(0, Math.min(host.clientWidth, hr.right - r.left));
+    }
+
     function resize(){
       var w = host.clientWidth, h = host.clientHeight;
       if(!w || !h) return;
-      small = w < 900;  offX = small ? 0 : 1.5;
+      small = w < 900;  offX = 0;
+      measureList();
       renderer.setSize(w,h,false);
       if(composer) composer.setSize(w,h);
       camera.aspect = w/h; camera.updateProjectionMatrix();
@@ -703,7 +744,8 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
        её считаем по реальному разлёту, поэтому кадр не режет спутника. */
     var viewDir = new THREE.Vector3(0.60, 0.372, 0.69).normalize();
     var STAGGER = 0.30;              /* доля хода на разъезд одного модуля */
-    var camTarget = new THREE.Vector3();
+    var camTarget = new THREE.Vector3(), fitV = new THREE.Vector3();
+    var FIT_FILL = 0.94;         /* доля кадра, которую занимает спутник */
     var vFwd = new THREE.Vector3(), vRight = new THREE.Vector3(), vUp = new THREE.Vector3();
 
     function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
@@ -727,7 +769,7 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
 
     /* Эффекты пересчитываем после модулей: им нужны свежие положения. */
     function updateFx(){
-      var i, g, v, c = 0;
+      var i, g, v, c = 0, moving = 0;
 
       /* шлейфы */
       for(i = 0; i < modules.length && i < FX_MAX; i++){
@@ -736,8 +778,14 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
         var dir = (g.userData.dy - g.userData.y0) >= 0 ? -1 : 1;   /* хвост позади */
         var len = v * 1.5;
         var o = i * 6;
-        trailPos[o]   = g.position.x; trailPos[o+1] = g.position.y;            trailPos[o+2] = 0;
-        trailPos[o+3] = g.position.x; trailPos[o+4] = g.position.y + dir * len; trailPos[o+5] = 0;
+        /* хвост тянем и по горизонтали: при подсветке слоя модуль уезжает вбок,
+           и вертикальный след смотрится оторванным */
+        var px = g.userData.px === undefined ? g.position.x : g.userData.px;
+        var sx = (g.position.x - px) * 8;
+        g.userData.px = g.position.x;
+        trailPos[o]   = g.position.x;      trailPos[o+1] = g.position.y;            trailPos[o+2] = 0;
+        trailPos[o+3] = g.position.x - sx; trailPos[o+4] = g.position.y + dir * len; trailPos[o+5] = 0;
+        if(v > moving) moving = v;
         var b = v * 1.15;
         trailCol[o]   = b * 0.55; trailCol[o+1] = b * 0.82; trailCol[o+2] = b;
         trailCol[o+3] = 0;        trailCol[o+4] = 0;        trailCol[o+5] = 0;
@@ -754,8 +802,13 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       trailGeo.attributes.color.needsUpdate = true;
 
       /* сор: всплывает к середине разлёта и расходится наружу */
-      var dm = dust.children[0].material;
-      dm.opacity = 0.5 * Math.sin(Math.PI * clamp01(progress)) + 0.16 * progress;
+      var dop = 0.5 * Math.sin(Math.PI * clamp01(progress)) + 0.16 * progress;
+      dust.children[0].material.opacity = dop;
+      if(dust.children[1]){
+        dust.children[1].material.opacity = dop * 0.55;
+        dust.children[1].rotation.y = spin * 0.9;
+        dust.children[1].rotation.z = spin * 0.2;
+      }
       dust.scale.setScalar(0.8 + progress * 0.7);
       dust.rotation.y = spin * 0.5;
       dust.rotation.x = spin * 0.12;
@@ -776,6 +829,13 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       } else {
         beacon.visible = false;
       }
+
+      /* Свет живёт вместе с разлётом: солнце обходит сцену всегда, а
+         контровой и экспозиция подрастают только пока модули идут. */
+      swingSun(spin);
+      rim.intensity = 0.85 + moving * 0.55;
+      rim2.intensity = 0.50 + moving * 0.30;
+      renderer.toneMappingExposure = 1.0 + moving * 0.06;
 
       /* рамка выделения */
       var want = active >= 0 && active < modules.length ? 0.72 : 0;
@@ -843,22 +903,71 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       root.rotation.x = 0.02 + eCam * 0.05;
       sky.rotation.y = spin * 0.22;   /* небо ползёт медленнее спутника */
 
-      /* дистанция под габарит: по вертикали и по горизонтали, что жёстче */
+      /* Первая прикидка дистанции — по габаритам. Точный кадр подберём ниже
+         по настоящей проекции: камера смотрит сверху, и широкий модуль на
+         экране выше своего габарита по Y — одной формулой это не берётся. */
       var cy = (yMin + yMax) / 2, halfH = (yMax - yMin) / 2;
+      var vw = renderer.domElement.clientWidth || 1, vh = renderer.domElement.clientHeight || 1;
+      var usableW = Math.max(160, vw - listW);
       var fovY = camera.fov * Math.PI / 180;
-      var fovX = 2 * Math.atan(Math.tan(fovY / 2) * camera.aspect);
-      var margin = 0.55;
+      var fovX = 2 * Math.atan(Math.tan(fovY / 2) * (usableW / vh));
       var dist = Math.max(
-        (halfH + margin) / Math.tan(fovY / 2),
-        (rad + margin + Math.abs(offX)) / Math.tan(fovX / 2)
-      ) + rad * 0.55;
+        halfH / Math.tan(fovY / 2),
+        rad / Math.tan(fovX / 2)
+      ) * 1.2;
 
-      /* камера подымается по ходу разбора: сверху расслоение читается лучше */
-      viewDir.set(0.60, 0.300 + 0.155 * eCam, 0.69).normalize();
-      camTarget.set(offX, cy, 0);
-      camera.position.copy(viewDir).multiplyScalar(dist).add(camTarget);
-      camera.lookAt(camTarget);
-      camera.updateMatrixWorld();
+      /* Камера подымается по ходу разбора: сверху расслоение читается лучше.
+         Плюс очень медленный облёт — сцена перестаёт быть фотографией.
+         Ведём от spin, а не от часов: покадровая съёмка должна повторяться. */
+      var orb = Math.sin(spin * 0.55) * 0.055;
+      viewDir.set(0.60 + orb, 0.300 + 0.155 * eCam + Math.sin(spin * 0.37) * 0.018,
+                  0.69 - orb * 0.8).normalize();
+      camTarget.set(0, cy, 0);
+      /* Смещаем не цель, а окно проекции: сдвиг в пикселях не зависит от
+         дистанции, поэтому спутник встаёт ровно посреди свободной полосы
+         на любом разрешении. */
+      var viewOffX = listW / 2;
+
+      /* Точный кадр: ставим камеру, меряем проекцию, поправляем дистанцию.
+         Масштаб на экране идёт примерно как 1/дистанция, поэтому двух
+         проходов хватает, а обрез исключён по построению. */
+      var allowX = (usableW / vw) * FIT_FILL, allowY = FIT_FILL;
+      root.updateMatrixWorld(true);
+      for(var pass = 0; pass < 3; pass++){
+        if(Math.abs(viewOffX) > 0.5) camera.setViewOffset(vw, vh, viewOffX, 0, vw, vh);
+        else camera.clearViewOffset();
+        camera.position.copy(viewDir).multiplyScalar(dist).add(camTarget);
+        camera.lookAt(camTarget);
+        camera.updateMatrixWorld();
+        camera.updateProjectionMatrix();
+        var nx0 = 1e9, nx1 = -1e9, ny0 = 1e9, ny1 = -1e9, seen = 0;
+        for(n = 0; n < modules.length; n++){
+          g = modules[n];
+          var lb = g.userData.lb;
+          if(!lb) continue;
+          for(var c = 0; c < 8; c++){
+            fitV.set(c & 1 ? lb[3] : lb[0], c & 2 ? lb[4] : lb[1], c & 4 ? lb[5] : lb[2]);
+            fitV.applyMatrix4(g.matrixWorld);
+            fitV.project(camera);
+            if(fitV.x < nx0) nx0 = fitV.x;
+            if(fitV.x > nx1) nx1 = fitV.x;
+            if(fitV.y < ny0) ny0 = fitV.y;
+            if(fitV.y > ny1) ny1 = fitV.y;
+            seen = 1;
+          }
+        }
+        if(!seen) break;
+        /* половина габарита, а не расстояние от случайного угла */
+        var ex = (nx1 - nx0) / 2, ey = (ny1 - ny0) / 2;
+        /* Центруем по настоящей оболочке, а не по началу координат: у собранного
+           спутника крылья несимметричны, и центр модели уезжает от центра сцены. */
+        var wantNdc = -(listW / vw);
+        viewOffX += ((nx0 + nx1) / 2 - wantNdc) * (vw / 2);
+        var k = Math.max(ex / allowX, ey / allowY);
+        var done = Math.abs(k - 1) <= 0.003;
+        if(k > 0.02) dist *= k;
+        if(done && pass > 0) break;
+      }
 
       /* планета: смещение задаётся в экранных осях от центра кадра */
       camera.getWorldDirection(vFwd);
@@ -915,6 +1024,30 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       hold: function(v){ hold = !!v; },
       loaded: function(){ return modelReady; },
       resize: resize,
+      /* экранный габарит спутника в CSS-пикселях: по нему подбирается
+         кадрирование, глазом по скриншоту это не померить — мешают звёзды */
+      screen: function(){
+        var w = host.clientWidth, h = host.clientHeight;
+        var v = new THREE.Vector3(), bb = new THREE.Box3();
+        var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        camera.updateMatrixWorld();
+        modules.forEach(function(g){
+          bb.setFromObject(g);
+          for(var i = 0; i < 8; i++){
+            v.set(i & 1 ? bb.max.x : bb.min.x,
+                  i & 2 ? bb.max.y : bb.min.y,
+                  i & 4 ? bb.max.z : bb.min.z);
+            g.parent.localToWorld(v.copy(v));
+            v.project(camera);
+            var px = (v.x * 0.5 + 0.5) * w, py = (-v.y * 0.5 + 0.5) * h;
+            if(px < x0) x0 = px; if(px > x1) x1 = px;
+            if(py < y0) y0 = py; if(py > y1) y1 = py;
+          }
+        });
+        return {x0:Math.round(x0), x1:Math.round(x1), y0:Math.round(y0), y1:Math.round(y1),
+                w:w, h:h, cx:Math.round((x0 + x1) / 2), cy:Math.round((y0 + y1) / 2),
+                fillW:+((x1 - x0) / w).toFixed(3), fillH:+((y1 - y0) / h).toFixed(3)};
+      },
       /* слепок эффектов — для отладки */
       fx: function(){
         return {

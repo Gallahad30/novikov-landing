@@ -674,7 +674,8 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
    в первом экране остаётся одна планета, вторая встречается на прокрутке. */
 .planet--a{width:min(24vw,270px);aspect-ratio:1;left:4vw;top:104vh;
   --p-hi:#27506B;--p-lo:#0A1826;--p-glow:rgba(47,159,208,.32);opacity:.7;transition:opacity .18s linear}
-.planet--b{width:min(17vw,190px);aspect-ratio:1;left:5vw;top:120vh;
+/* разводим по сторонам: три планеты слева стоят стопкой и спорят друг с другом */
+.planet--b{width:min(17vw,190px);aspect-ratio:1;right:6vw;top:150vh;
   --p-hi:#5A3A34;--p-lo:#180F12;--p-glow:rgba(242,119,90,.28);opacity:.8;transition:opacity .18s linear}
 .planet--c{width:min(42vw,470px);aspect-ratio:1;left:50%;margin-left:min(-21vw,-235px);top:240vh;
   --p-hi:#22485F;--p-lo:#070E18;--p-glow:rgba(99,205,242,.22);opacity:.6;transition:opacity .18s linear}
@@ -685,7 +686,7 @@ footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
 
 /* На телефоне сцена узкая: три планеты разом лезут на спутника. Гасим. */
 @media (max-width:760px){ .sky__neb{opacity:.55} .planet--a{opacity:.26;width:34vw;left:4vw;top:112vh}
-  .planet--b{width:26vw;left:6vw;opacity:.4} .planet--c{opacity:.35;width:56vw;margin-left:-28vw} }
+  .planet--b{width:26vw;right:5vw;opacity:.4} .planet--c{opacity:.35;width:56vw;margin-left:-28vw} }
 @media (prefers-reduced-motion:reduce){ .sky>*{will-change:auto} }
 
 /* --- планета в первом экране --- */
@@ -1279,14 +1280,20 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
      IntersectionObserver успевает не всегда: блок остаётся непоказанным.
      Поэтому на каждом кадре досматриваем очередь — она только укорачивается. */
   var pending = [].slice.call(document.querySelectorAll('.rv')), sweptAt = -1e9;
+
+  /* Всё, что требует чтения геометрии, живёт на одном редком тике: каждый кадр
+     читать раскладку нельзя — это принудительный пересчёт по всей странице. */
+  function slowTick(){
+    var now = (window.performance && performance.now) ? performance.now() : +new Date();
+    if(now - sweptAt < 220) return;
+    sweptAt = now;
+    updateSkyDim();
+    sweepReveal();
+  }
+
   function sweepReveal(){
     if(!pending.length) return;
-    /* Это страховка, а не основной механизм: показывает IntersectionObserver.
-       Поэтому четырёх проходов в секунду хватает, а каждый кадр читать
-       геометрию нельзя — это принудительный пересчёт раскладки. */
-    var now = (window.performance && performance.now) ? performance.now() : +new Date();
-    if(now - sweptAt < 240) return;
-    sweptAt = now;
+    /* Это страховка, а не основной механизм: показывает IntersectionObserver. */
     var vh = window.innerHeight, rest = [];
     for(var i = 0; i < pending.length; i++){
       var el = pending[i];
@@ -1298,7 +1305,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     pending = rest;
   }
   window.addEventListener('load', function(){
-    setTimeout(function(){ sweptAt = -1e9; sweepReveal(); }, 400);
+    setTimeout(function(){ sweptAt = -1e9; slowTick(); }, 400);
   });
 
   /* ---------- размерная линия: реальная ширина колонки ---------- */
@@ -1356,6 +1363,18 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
      на миг убираем инлайн и читаем вычисленное. Пересчитываем на resize —
      иначе телефонные значения не подхватятся при повороте экрана. */
   var skyVH = window.innerHeight;
+
+  /* В секции 03 своё небо: настоящая сцена со своей планетой. Плоские планеты
+     фона поверх неё только спорят — гасим их, пока раздел занимает экран. */
+  var proofEl = document.getElementById('proof'), skyDim = 1;
+  function updateSkyDim(){
+    if(!proofEl) return;
+    var r = proofEl.getBoundingClientRect(), vh = window.innerHeight;
+    var overlap = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+    var k = overlap / Math.min(vh, r.height || vh);
+    skyDim = k <= 0 ? 1 : (k >= 0.5 ? 0 : 1 - k / 0.5);
+  }
+
   function readBaseOps(){
     skyVH = window.innerHeight;
     for(var i = 0; i < planets.length; i++){
@@ -1395,14 +1414,14 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       if(!m[0]) continue;
       var y = -st * m[1];
       m[0].style.transform = 'translate3d(0,' + y + 'px,0)';
-      m[0].style.opacity = (m[2] * planetFade(m[3], m[3].top + y, vh)).toFixed(3);
+      m[0].style.opacity = (m[2] * skyDim * planetFade(m[3], m[3].top + y, vh)).toFixed(3);
     }
   }
 
   function onScroll(){
     var st = scrollPos();
+    slowTick();
     sky(st);
-    sweepReveal();
     fill.style.transform = 'scaleY(' + (docH>0 ? Math.min(st/docH,1) : 0) + ')';
     nav.classList.toggle('scrolled', st>10);
     document.body.classList.toggle('dock-on', st > window.innerHeight*0.85);

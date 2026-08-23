@@ -153,7 +153,7 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     var modules = [];
     function mod(y0, dy){
       var g = new THREE.Group();
-      g.userData.y0 = y0; g.userData.dy = dy;
+      g.userData.y0 = y0; g.userData.dy = dy; g.userData.order = 0;
       g.userData.halfH = 0.55; g.userData.radXZ = 2.6;   /* запас для процедурной сборки */
       root.add(g); modules.push(g); return g;
     }
@@ -243,21 +243,32 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
             o.castShadow = true; o.receiveShadow = true;
             var mm = Array.isArray(o.material) ? o.material : [o.material];
             mm.forEach(function(mt){
-              if(mt && mt.map){ mt.map.anisotropy = maxAniso; mt.map.needsUpdate = true; }
-              if(mt && mt.roughnessMap){ mt.roughnessMap.anisotropy = maxAniso; }
+              if(!mt) return;
+              /* Анизотропия и мипмапы нужны всем картам, а не двум: без
+                 мипмапов запечённый микрорельеф на мелком масштабе кипит. */
+              ['map','normalMap','roughnessMap','metalnessMap','aoMap','emissiveMap']
+                .forEach(function(k){
+                  var t = mt[k];
+                  if(!t) return;
+                  t.anisotropy = maxAniso;
+                  t.generateMipmaps = true;
+                  t.minFilter = THREE.LinearMipmapLinearFilter;
+                  t.magFilter = THREE.LinearFilter;
+                  t.needsUpdate = true;
+                });
+              /* Рельеф пёкся под крупный план, а в кадре модуль мелкий:
+                 полная сила нормалей читается как шум, а не как металл. */
+              if(mt.normalScale) mt.normalScale.multiplyScalar(0.5);
+              if(typeof mt.roughness === 'number') mt.roughness = Math.min(1, mt.roughness + 0.08);
+              mt.envMapIntensity = 0.85;
+              mt.needsUpdate = true;
             });
           });
           g.userData.y0 = g.position.y;
-          g.userData.dy = [2.9, 1.0, -0.25, -1.5, -2.7, -3.85][n];
-          /* габариты модуля считаем один раз: по ним камера подбирает
-             дистанцию, иначе разлетевшийся спутник вылезает за кадр */
-          var bb = new THREE.Box3().setFromObject(g);
-          g.userData.halfH = Math.max(Math.abs(bb.max.y - g.position.y),
-                                      Math.abs(g.position.y - bb.min.y));
-          g.userData.radXZ = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x),
-                                      Math.abs(bb.min.z), Math.abs(bb.max.z));
           root.add(g); modules.push(g);
         });
+        /* слоты и габариты считает раскладка — по настоящим размерам */
+        layoutModules();
         modelReady = true;
         frame();
       }, undefined, function(){ /* файла нет — остаётся процедурная сборка */ });
@@ -532,6 +543,52 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     );
     planetGrp.add(halo);
 
+    /* Раскладка слотов разлёта.
+       Слоты нельзя задавать списком по индексу узла: в GLB порядок узлов не
+       совпадает с порядком по высоте, и модуль из середины стопки уезжал
+       наверх сквозь соседей. Считаем от настоящих габаритов — сортируем по
+       высоте в сборке и раскладываем сверху вниз с равным просветом.
+       К габариту добавляем запас на наклон: модуль при развороте занимает
+       по вертикали больше, чем в покое, и на широких панелях это заметно. */
+    var SLOT_GAP = 0.5;
+    function layoutModules(){
+      if(!modules.length) return;
+      var box = new THREE.Box3(), i, m;
+      var items = modules.map(function(g){
+        box.setFromObject(g);
+        var rad = Math.max(Math.abs(box.min.x), Math.abs(box.max.x),
+                           Math.abs(box.min.z), Math.abs(box.max.z));
+        var pad = 0.075 * rad;          /* запас на доворот */
+        return {
+          g: g,
+          y0: g.userData.y0,
+          top: (box.max.y - g.position.y) + pad,
+          bot: (g.position.y - box.min.y) + pad,
+          rad: rad
+        };
+      });
+      items.sort(function(a, b){ return b.y0 - a.y0; });   /* сверху вниз */
+
+      var total = 0;
+      for(i = 0; i < items.length; i++) total += items[i].top + items[i].bot;
+      total += SLOT_GAP * (items.length - 1);
+
+      var cursor = total / 2;
+      for(i = 0; i < items.length; i++){
+        m = items[i];
+        m.g.userData.dy = cursor - m.top;
+        /* Очередь волны — от краёв к середине, а не сверху вниз. Нижний
+           модуль обязан уйти раньше того, что над ним: иначе верхний
+           проезжает сквозь припаркованного соседа. Сверху то же самое
+           наоборот, поэтому крайние стартуют первыми, попарно. */
+        var dist = Math.min(i, items.length - 1 - i);
+        m.g.userData.order = dist * 2 + (i < items.length / 2 ? 0 : 1);
+        m.g.userData.halfH = Math.max(m.top, m.bot);
+        m.g.userData.radXZ = m.rad;
+        cursor = m.g.userData.dy - m.bot - SLOT_GAP;
+      }
+    }
+
     var progress = 0, active = -1, spin = 0, visible = false, raf = 0;
     var offX = small ? 0 : 1.5;
 
@@ -584,7 +641,10 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
         g = modules[n];
         /* каждый модуль уходит со своей задержкой: стопка расслаивается
            сверху вниз, а не разлетается разом */
-        var t0 = (n / Math.max(1, modules.length - 1)) * (1 - STAGGER);
+        /* очередь берём из раскладки, а не из индекса узла: волна должна
+           идти сверху вниз по стопке, иначе модули обгоняют друг друга */
+        var ord = g.userData.order === undefined ? n : g.userData.order;
+        var t0 = (ord / Math.max(1, modules.length - 1)) * (1 - STAGGER);
         var raw = clamp01((progress - t0) / STAGGER);
         var en = easeOutBack(raw);
         var y0 = g.userData.y0;
@@ -592,9 +652,9 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
         /* доворот идёт быстрее сдвига и успевает встать до остановки:
            модуль будто отвинтили, а не вынули лифтом */
         var rot = easeOutCubic(clamp01(raw * 1.25));
-        g.rotation.y = (n % 2 ? -1 : 1) * 0.26 * rot;
-        g.rotation.z = (n % 2 ? 1 : -1) * 0.055 * rot;
-        g.rotation.x = (n % 3 === 0 ? 1 : -1) * 0.026 * rot;
+        g.rotation.y = (ord % 2 ? -1 : 1) * 0.26 * rot;
+        g.rotation.z = (ord % 2 ? 1 : -1) * 0.05 * rot;
+        g.rotation.x = (ord % 3 === 0 ? 1 : -1) * 0.024 * rot;
 
         var want = (active === n) ? .34 : 0;
         g.position.x += (want - g.position.x) * .12;
@@ -680,7 +740,19 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
       },
       hold: function(v){ hold = !!v; },
       loaded: function(){ return modelReady; },
-      resize: resize
+      resize: resize,
+      /* текущие положения — для проверки просветов на всём ходу */
+      pos: function(){ return modules.map(function(g){ return {y:+g.position.y.toFixed(4)}; }); },
+      /* отладочный слепок габаритов: по нему считаются просветы разлёта */
+      dump: function(){
+        return modules.map(function(g, n){
+          var bb = new THREE.Box3().setFromObject(g);
+          return {n:n, name:g.name, y0:+g.userData.y0.toFixed(3),
+                  dy:+g.userData.dy.toFixed(3),
+                  top:+(bb.max.y - g.position.y).toFixed(3),
+                  bot:+(g.position.y - bb.min.y).toFixed(3)};
+        });
+      }
     };
     document.body.classList.add('gl-on');
     frame();

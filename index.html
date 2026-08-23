@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Новиков Артём — лендинг под ключ за 15 000 ₽</title>
-<meta name="description" content="Новиков Артём собирает лендинги под ключ за 15 000 ₽. Одна услуга, одна цена, срок до 7 дней. Портфолио — эта страница." />
+<title>Новиков Артём — лендинг под ключ от 15 000 ₽</title>
+<meta name="description" content="Новиков Артём собирает лендинги под ключ от 15 000 ₽. Одна услуга, срок до 7 дней. Портфолио — эта страница." />
 <meta name="theme-color" content="#070B14" />
 <link rel="canonical" href="https://gallahad30.github.io/novikov-landing/" />
 <meta property="og:url" content="https://gallahad30.github.io/novikov-landing/" />
@@ -14,8 +14,8 @@
 <meta property="og:image:alt" content="Разобранный на модули спутник — иллюстрация к лендингу Артёма Новикова" />
 <meta name="twitter:image" content="https://gallahad30.github.io/novikov-landing/og-cover.jpg" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Новиков Артём — лендинг под ключ за 15 000 ₽" />
-<meta property="og:description" content="Одна услуга, одна цена. Эта страница — и есть портфолио." />
+<meta property="og:title" content="Новиков Артём — лендинг под ключ от 15 000 ₽" />
+<meta property="og:description" content="Одна услуга, цена от 15 000 ₽. Эта страница — и есть портфолио." />
 <meta property="og:locale" content="ru_RU" />
 <meta property="og:site_name" content="Новиков Артём" />
 <meta name="twitter:card" content="summary_large_image" />
@@ -497,7 +497,12 @@ html:not(.js) .xpl__item p,.xpl.static .xpl__item p{max-height:none;opacity:1;ma
 .price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,4vw,64px);align-items:start;grid-column:1/-1}
 @media (max-width:900px){ .price{grid-template-columns:1fr;gap:34px} }
 .price__fig{display:block;font-family:var(--display);font-weight:700;letter-spacing:-.05em;line-height:.84;
-  font-size:clamp(3.6rem,12vw,9.5rem);font-variant-numeric:tabular-nums}
+  font-size:clamp(3.2rem,8.5vw,7.6rem);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* «от» ставим отдельной строкой над цифрой: в строку оно не влезает —
+   при 152 px кегля «от 15 000 ₽» шире колонки и число ломается пополам */
+.price__from{display:block;font-family:var(--mono);font-weight:500;font-size:.14em;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--slate);
+  margin-bottom:.5em}
 .price__cur{font-size:.4em;letter-spacing:-.02em;margin-left:.06em}
 .price__note{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--slate);margin:20px 0 0;max-width:34ch;line-height:1.7}
 .price__cta{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
@@ -1016,9 +1021,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
         <p class="hero__name"><i aria-hidden="true"></i>дизайн и код · лендинги под ключ</p>
         <div class="anchor">
           <h1 class="hero__title" id="heroName"><span class="row">Делаю лендинги</span><span class="row">в кратчайшие сроки</span></h1>
-          <p class="hero__offer">Соберу вам лендинг за <u>15 000 ₽</u></p>
+          <p class="hero__offer">Соберу вам лендинг от <u>15 000 ₽</u></p>
         </div>
-        <p class="hero__sub rv d3">Меня зовут <b>Артём Новиков</b>, я дизайнер и разработчик лендингов. Одна услуга, одна цена, без пакетов и доплат за блоки. <b>Портфолио — эта страница.</b> Всё, что вы на ней видите и трогаете, я спроектировал и написал руками.</p>
+        <p class="hero__sub rv d3">Меня зовут <b>Артём Новиков</b>, я дизайнер и разработчик лендингов. Одна услуга, понятная смета: называю сумму до начала работы и дальше её не двигаю. <b>Портфолио — эта страница.</b> Всё, что вы на ней видите и трогаете, я спроектировал и написал руками.</p>
         <div class="anchor">
           <div class="hero__cta rv d4">
             <a href="#contact" class="btn btn--lg btn--solid"><span>Обсудить проект</span></a>
@@ -1051,7 +1056,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       <h2 class="sr no-split">Рамки сделки</h2>
       <dl class="spec__in">
         <div class="spec__cell"><dt>Что делаю</dt><dd>Лендинг под ключ</dd></div>
-        <div class="spec__cell"><dt>Цена</dt><dd>15 000&nbsp;₽ фиксом</dd></div>
+        <div class="spec__cell"><dt>Цена</dt><dd>от 15 000&nbsp;₽</dd></div>
         <div class="spec__cell"><dt>Срок</dt><dd>До 7 дней</dd></div>
         <div class="spec__cell"><dt>Отдаю</dt><dd>Домен, формы, аналитику</dd></div>
       </dl>
@@ -1075,7 +1080,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
               <div class="pl">
                 <span class="m">модуль 01 · оффер</span>
                 <span class="t">Новиков Артём</span>
-                <span class="chip">15 000 ₽ фиксом</span>
+                <span class="chip">от 15 000 ₽</span>
                 <i class="screw p1"></i><i class="screw p2"></i><i class="screw p3"></i><i class="screw p4"></i>
               </div>
             </div>
@@ -1134,7 +1139,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
         </div>
 
         <ol class="xpl__list" id="xplList">
-          <li class="xpl__item" data-l="0"><span class="n">Слой 01</span><h3>Оффер и цена</h3><p>Услуга и сумма видны сразу, до первой прокрутки. Без вилок и «от».</p></li>
+          <li class="xpl__item" data-l="0"><span class="n">Слой 01</span><h3>Оффер и цена</h3><p>Услуга и порядок суммы видны сразу, до первой прокрутки. Без «рассчитаем индивидуально».</p></li>
           <li class="xpl__item" data-l="1"><span class="n">Слой 02</span><h3>Сетка 12 колонок</h3><p>Каждый блок сидит на общей сетке. Колонки, размерные линии и роли блоков видно прямо на странице.</p></li>
           <li class="xpl__item" data-l="2"><span class="n">Слой 03</span><h3>Типографика</h3><p>Три гарнитуры и жёсткая иерархия: заголовок, текст, техническая подпись.</p></li>
           <li class="xpl__item" data-l="3"><span class="n">Слой 04</span><h3>Механики</h3><p>Анимации привязаны к прокрутке и курсору. Стоят там, где помогают читать, а не там, где заметнее.</p></li>
@@ -1202,7 +1207,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     <div class="wrap">
       <span class="eyebrow rv">Что входит</span>
       <h2 class="c1-9">Всё, что нужно странице,<br>чтобы начать работать.</h2>
-      <p class="lead c1-7 rv d1">Шесть частей работы за одну цену. Ничего из этого списка не выносится
+      <p class="lead c1-7 rv d1">Шесть частей работы в базовой сборке. Ничего из этого списка не выносится
         в допы и не считается отдельно: страница либо работает целиком, либо не сделана.</p>
       <div class="cards">
         <div class="card rv"><span class="code">DSN</span><h3>Дизайн под вас</h3><p>Индивидуальный визуал под продукт и аудиторию. Шаблоны из конструкторов не использую: сетка, типографика и ритм блоков собираются под ваш текст, а не текст подгоняется под чужой макет.</p><span class="card__note">Отдаю: макет десктопа и мобильного</span><div class="rule"></div></div>
@@ -1244,8 +1249,8 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       <span class="eyebrow rv">Цена</span>
       <div class="price">
         <div class="rv">
-          <span class="price__fig" data-lag="0.06"><span class="cnt" data-target="15000">15 000</span><span class="price__cur">₽</span></span>
-          <p class="price__note">Одна сумма за всё. Ни пакетов, ни надбавок за лишний экран, ни «плюс хостинг отдельно».</p>
+          <span class="price__fig" data-lag="0.06"><span class="price__from">от</span><span class="cnt" data-target="15000">15 000</span><span class="price__cur">₽</span></span>
+          <p class="price__note">Столько стоит базовая сборка целиком. Больше — только если работы объективно больше: сложная графика, много экранов, нестандартные механики. Сумму называю до начала работы.</p>
           <div class="price__cta"><a href="#contact" class="btn btn--lg btn--solid"><span>Обсудить проект</span></a></div>
         </div>
         <ul class="price__list rv d1">
@@ -1267,7 +1272,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       <span class="eyebrow rv">Вопросы</span>
       <h2 class="c1-9">Отвечаю честно</h2>
       <div class="faq c1-8 rv d2">
-        <details class="qa"><summary class="qa__q">Почему так дёшево?</summary><p class="qa__a">Потому что я один и делаю одно: лендинги. Нет офиса, аккаунт-менеджера и отдела продаж, чью зарплату пришлось бы заложить в счёт. И я не трачу время на переговоры о смете — смета одна.</p></details>
+        <details class="qa"><summary class="qa__q">Почему так дёшево?</summary><p class="qa__a">Потому что я один и делаю одно: лендинги. Нет офиса, аккаунт-менеджера и отдела продаж, чью зарплату пришлось бы заложить в счёт. И я не трачу время на переговоры о смете — считаю один раз, до начала работы.</p></details>
         <details class="qa"><summary class="qa__q">Сколько занимает работа?</summary><p class="qa__a">До 7 дней от брифа до публикации. Точный срок называю, когда пойму задачу, и дальше его не двигаю. Если задерживаюсь по своей вине — предупреждаю заранее, а не в день сдачи.</p></details>
         <details class="qa"><summary class="qa__q">А если нужны правки?</summary><p class="qa__a">Правки на этапе макета входят в цену — там и живёт основная работа. После вёрстки входят два круга правок по текстам и мелочам. Всё, что меняет структуру страницы после утверждения макета, обсуждаем до начала работы, а не постфактум.</p></details>
         <details class="qa"><summary class="qa__q">Что нужно от меня?</summary><p class="qa__a">Ссылка на продукт или короткое описание, понимание, кому вы продаёте, и логотип, если он есть. Тексты писать не обязательно — это моя часть. Если материалов нет совсем, соберём на брифе.</p></details>
@@ -1902,7 +1907,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 </script>
 
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"ProfessionalService","name":"Новиков Артём — лендинги под ключ","description":"Лендинг под ключ: дизайн, тексты, вёрстка, формы, аналитика, публикация. Одна услуга, фиксированная цена.","areaServed":"RU","availableLanguage":"ru","telephone":"+7 961 446-34-48","priceRange":"15000 ₽","founder":{"@type":"Person","name":"Новиков Артём","jobTitle":"Дизайнер и разработчик лендингов"},"sameAs":["https://t.me/NovikovCore"],"makesOffer":{"@type":"Offer","name":"Лендинг под ключ","price":"15000","priceCurrency":"RUB"}}
+{"@context":"https://schema.org","@type":"ProfessionalService","name":"Новиков Артём — лендинги под ключ","description":"Лендинг под ключ: дизайн, тексты, вёрстка, формы, аналитика, публикация. Одна услуга, цена от 15 000 ₽.","areaServed":"RU","availableLanguage":"ru","telephone":"+7 961 446-34-48","priceRange":"от 15000 ₽","founder":{"@type":"Person","name":"Новиков Артём","jobTitle":"Дизайнер и разработчик лендингов"},"sameAs":["https://t.me/NovikovCore"],"makesOffer":{"@type":"Offer","name":"Лендинг под ключ","priceCurrency":"RUB","priceSpecification":{"@type":"PriceSpecification","minPrice":"15000","priceCurrency":"RUB"}}}
 </script>
 
 <script type="application/ld+json">

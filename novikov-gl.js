@@ -221,7 +221,14 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     feet.forEach(function(p){ var s = cyl(.07,.06,M.aluD); s.position.set(p[0],-.08,p[1]); g5.add(s); });
 
     /* детализированная модель из Blender; пока не пришла — работает процедурная сборка */
-    var MODEL = window.NOVIKOV_MODEL || 'satellite.glb', modelAsked = false, modelReady = false;
+    /* На телефоне спутник занимает около 340 px по ширине экрана — вчетверо
+       меньше десктопных 600, и текстуры такого разрешения там не нужны.
+       Лёгкая сборка отличается только размером картинок: геометрия и
+       развёртка те же. Собирается scripts/make_mobile_model.py. */
+    var MOBILE = window.matchMedia('(pointer: coarse)').matches
+              || window.matchMedia('(max-width: 760px)').matches;
+    var MODEL = window.NOVIKOV_MODEL || (MOBILE ? 'satellite.mobile.glb' : 'satellite.glb');
+    var modelAsked = false, modelReady = false, modelRetried = false;
     function loadModel(){
       if(modelAsked) return; modelAsked = true;
       var loader = new A.GLTFLoader();
@@ -276,7 +283,17 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
         layoutModules();
         modelReady = true;
         frame();
-      }, undefined, function(){ /* файла нет — остаётся процедурная сборка */ });
+      }, undefined, function(){
+        /* Лёгкая сборка могла не доехать до сайта — тогда спрашиваем полную,
+           а не остаёмся молча на процедурной. Один повтор, без круга. */
+        if(MODEL !== 'satellite.glb' && !modelRetried){
+          modelRetried = true; modelAsked = false;
+          MODEL = 'satellite.glb';
+          loadModel();
+          return;
+        }
+        /* файла нет — остаётся процедурная сборка */
+      });
     }
 
     /* 256×128: PMREM всё равно размывает карту, а весит она 104 КБ вместо
@@ -284,6 +301,10 @@ window.NOVIKOV_GL_SRC = {"glCore": "/**\n * @license\n * Copyright 2010-2026 Thr
     var HDR = window.NOVIKOV_HDR || 'studio_small_09_256.hdr', hdrAsked = false;
     function loadHdr(){
       if(hdrAsked) return; hdrAsked = true;
+      /* На телефоне карту окружения не грузим: сцена уже собрана с
+         процедурным RoomEnvironment, HDRI лишь уточняет отражения — на
+         экране в 340 px этого не видно, а 83 КБ по сети видно. */
+      if(MOBILE && !window.NOVIKOV_HDR) return;
       new A.HDRLoader().load(HDR, function(tex){
         tex.mapping = THREE.EquirectangularReflectionMapping;
         scene.environment = pmrem.fromEquirectangular(tex).texture;

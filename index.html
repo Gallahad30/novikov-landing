@@ -638,6 +638,8 @@ html:not(.js) .xpl__item p,.xpl.static .xpl__item p{max-height:none;opacity:1;ma
   transform:scaleX(0);transform-origin:left;transition:transform .4s var(--ease)}
 .compose__field:focus-within::after{transform:scaleX(1)}
 .compose__out{margin-top:22px;border-top:1px solid var(--line-2);padding-top:20px}
+/* Строка контакта была 43 px — на пиксель ниже нормы цели нажатия. */
+@media (pointer:coarse){ .contact .mono[href]{display:inline-flex;align-items:center;min-height:46px} }
 .compose__out pre{margin:0 0 20px;font-family:var(--mono);font-size:.78rem;line-height:1.75;color:#C3CED5;
   white-space:pre-wrap;word-break:break-word}
 .compose__go{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
@@ -646,6 +648,114 @@ html:not(.js) .xpl__item p,.xpl.static .xpl__item p{max-height:none;opacity:1;ma
 .compose__go .btn--solid:hover{border-color:var(--blue-hi);color:#fff}
 .copied{font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:#8FD8F5;opacity:0;transition:opacity .3s}
 .copied.on{opacity:1}
+
+/* ============================================================
+   ТЕЛЕФОН: объём, цели нажатия, читаемость подписей
+   Замер до правок (390×844): 15,5 экрана, до цены 11,1; на 375×667 —
+   19,4 и 13,8. Шесть экранов из двенадцати давали два раздела карточек
+   подряд. Ниже — уплотнение, которое не трогает десктоп.
+   ============================================================ */
+@media (max-width:640px){
+  /* поля секций: 64 px сверху и снизу на восьми разделах — это два экрана
+     воздуха там, где экран стоит дорого */
+  .pad{padding:44px 0}
+  .pad-lg{padding:64px 0}
+
+  /* --- 03 механики: сетка вместо столбика ---
+     Ряд появился только здесь, и сцены плиток пришлось равнять: у одной
+     демонстрация в четыре строки текста, у другой круг. Твёрдая высота
+     сцены плюс тянущиеся ряды — иначе линия под сценой пляшет. */
+  .lab{grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr}
+  .lab__tile{height:100%}
+  .lab__stage{flex:0 0 104px;height:104px;min-height:0;padding:14px 12px}
+  .d-type{font-size:.95rem;line-height:1.15}
+  .lab__meta{padding:12px 14px 14px}
+  .lab__meta h3{font-size:.94rem;line-height:1.25}
+  .lab__meta p{font-size:.8rem;line-height:1.45}
+  /* «навести» на телефоне неверно: курсора нет, плитка играет сама */
+  .lab__hint{display:none}
+  .d-mag{width:78px;height:78px}
+  .d-svg{width:84px;height:84px}
+  .d-num{font-size:2rem}
+
+  /* --- 04 что входит: поля и высота --- */
+  .cards{margin-top:28px}
+  .card{padding:22px 20px 20px;min-height:0;gap:9px}
+
+  /* --- полоса призыва между разделами --- */
+  .mid-cta{margin:34px 0 0;padding:20px 0}
+
+  /* технические подписи моноширинным: 9,6 px в верхнем регистре
+     на телефоне не читаются */
+  .card__note{font-size:.7rem}
+  .card .code{font-size:.72rem}
+  .lab__meta .k{font-size:.7rem}
+  .eyebrow{font-size:.72rem}
+}
+
+/* Заголовок механик знает, чем его открыли. Переключение на CSS: на
+   грубом указателе «Наведите курсор» — ложь, там работает касание. */
+.hv-fine{display:inline}
+.hv-coarse{display:none}
+@media (hover:none),(pointer:coarse){
+  .hv-fine{display:none}
+  .hv-coarse{display:inline}
+}
+
+/* Цели нажатия. Поле сборщика было 39 px при норме 44 — добираем
+   отступом, а не кеглем: кегль 16 px обязателен, иначе Safari зумит
+   страницу на фокусе. */
+@media (pointer:coarse){
+  .compose input{padding:13px 2px}
+  .compose__field{min-height:46px;display:flex;align-items:flex-end}
+  .compose__field input{font-size:16px}
+}
+
+/* Свёртка описания карточки. `summary` виден только на телефоне: на
+   десктопе деталь всегда раскрыта и маркер не нужен. */
+.card__more{margin:0}
+.card__more>summary{display:none}
+.card__more>p{margin:0}
+@media (max-width:600px){
+  .card__more>summary{display:block;list-style:none;cursor:pointer;
+    font-family:var(--mono);font-size:.68rem;font-weight:500;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--blue);padding:9px 0;margin:-4px 0 0;
+    min-height:38px;display:flex;align-items:center;gap:7px}
+  .card__more>summary::-webkit-details-marker{display:none}
+  .card__more>summary::after{content:"";width:7px;height:7px;border-right:1px solid currentColor;
+    border-bottom:1px solid currentColor;transform:rotate(45deg) translate(-2px,-2px);
+    transition:transform .3s var(--ease)}
+  .card__more[open]>summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+  .card__more[open]>summary{color:var(--slate-2)}
+  .card__more>p{padding-bottom:4px}
+}
+
+/* Доводка после замера: цели нажатия и подписи, которые читают.
+   Всё под грубым указателем — на десктопе кегли прежние. */
+@media (pointer:coarse){
+  /* шесть «Подробнее» подряд — шесть целей по 38 px */
+  .card__more>summary{min-height:44px}
+  /* Строка контакта в подвале была 43 px. Селектор с атрибутом: без него
+     правило проигрывает одноимённому, записанному ниже по файлу. */
+  footer a.mono[href]{padding:13px 0 15px;margin:-13px 0 -15px}
+  /* подписи полей сборщика: 9,92 px в верхнем регистре моноширинным */
+  .compose label{font-size:.72rem}
+  /* «Telegram — отвечаю быстрее всего» и соседняя строка про телефон */
+  .contact small{font-size:.72rem}
+  /* Единственная инструкция к закреплённому разбору. `margin:0` в базовом
+     правиле оставлял её вплотную к последней строке манифеста: на десктопе
+     их разводит сетка, на телефоне — ничто. */
+  .xpl__cap{font-size:.7rem;margin-top:16px}
+  .hero__hint kbd{font-size:.76rem}
+}
+
+/* Заголовки на телефоне. Нижняя граница clamp держала h2 на 1,85 rem там,
+   где 4vw = 15,6 px, и заголовок из десяти слов вставал в пять строк —
+   полэкрана. Иерархия сохраняется: h2 24,8 px против 16 px у лида. */
+@media (max-width:640px){
+  h2{font-size:clamp(1.55rem,7vw,2.1rem);line-height:1.1}
+  .manifesto{line-height:1.08}
+}
 
 /* ---------- мобильная панель ---------- */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:90;display:none;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
@@ -1418,7 +1528,7 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   <section class="pad" id="lab" data-idx="03 / МЕХАНИКИ" data-theme="light">
     <div class="wrap">
       <span class="eyebrow rv">Механики</span>
-      <h2 class="c1-9">Наведите курсор.<br>Каждая плитка — приём, который я ставлю на страницы.</h2>
+      <h2 class="c1-9"><span class="hv-fine">Наведите курсор.</span><span class="hv-coarse">Коснитесь плитки.</span><br>Каждая плитка — приём, который я ставлю на страницы.</h2>
       <p class="lead c1-7 rv d2" style="margin-top:16px">Не описание услуги, а сама услуга в разобранном виде. Плитку можно запускать сколько угодно раз.</p>
 
       <div class="lab">
@@ -1478,12 +1588,12 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       <p class="lead c1-7 rv d1">Шесть частей работы в базовой сборке. Ничего из этого списка не выносится
         в допы и не считается отдельно: страница либо работает целиком, либо не сделана.</p>
       <div class="cards">
-        <div class="card rv"><span class="code">DSN</span><h3>Дизайн под вас</h3><p>Индивидуальный визуал под продукт и аудиторию. Шаблоны из конструкторов не использую: сетка, типографика и ритм блоков собираются под ваш текст, а не текст подгоняется под чужой макет.</p><span class="card__note">Отдаю: макет десктопа и мобильного</span><div class="rule"></div></div>
-        <div class="card rv d1"><span class="code">TXT</span><h3>Оффер и тексты</h3><p>Разбираюсь, что вы продаёте и почему это стоит своих денег. Заголовки, буллеты, подписи к кнопкам, ответы на возражения — пишу сам, с ваших слов, без воды и «динамично развивающейся компании».</p><span class="card__note">Отдаю: тексты всех блоков</span><div class="rule"></div></div>
-        <div class="card rv d2"><span class="code">DEV</span><h3>Вёрстка и скорость</h3><p>Чистый код без конструкторов. Одинаково работает на телефоне, планшете и десктопе, открывается быстро на медленной сети и не разваливается при увеличении шрифта.</p><span class="card__note">Отдаю: исходники без сборщиков</span><div class="rule"></div></div>
-        <div class="card rv"><span class="code">MOT</span><h3>Анимации</h3><p>Те самые механики из блока выше. Ставлю их там, где они помогают читать: ведут взгляд, отделяют разделы, подсказывают, что кликается. Там, где мешают, — не ставлю.</p><span class="card__note">Отдаю: анимации, которые не мешают читать</span><div class="rule"></div></div>
-        <div class="card rv d1"><span class="code">ANL</span><h3>Формы и аналитика</h3><p>Заявка приходит прямо вам — в мессенджер или почтой, без чужих личных кабинетов и подписок. Аналитика с целями показывает, откуда пришёл человек и на каком блоке ушёл.</p><span class="card__note">Отдаю: цели, события, доступы</span><div class="rule"></div></div>
-        <div class="card rv d2"><span class="code">OPS</span><h3>Запуск</h3><p>Выкладываю на вашу площадку, подключаю SSL, проверяю на живых устройствах. Отдаю исходники и короткую инструкцию, как править тексты самому, без меня и без вёрстки.</p><span class="card__note">Отдаю: рабочую страницу и доступы</span><div class="rule"></div></div>
+        <div class="card rv"><span class="code">DSN</span><h3>Дизайн под вас</h3><details class="card__more" open><summary>Подробнее</summary><p>Индивидуальный визуал под продукт и аудиторию. Шаблоны из конструкторов не использую: сетка, типографика и ритм блоков собираются под ваш текст, а не текст подгоняется под чужой макет.</p></details><span class="card__note">Отдаю: макет десктопа и мобильного</span><div class="rule"></div></div>
+        <div class="card rv d1"><span class="code">TXT</span><h3>Оффер и тексты</h3><details class="card__more" open><summary>Подробнее</summary><p>Разбираюсь, что вы продаёте и почему это стоит своих денег. Заголовки, буллеты, подписи к кнопкам, ответы на возражения — пишу сам, с ваших слов, без воды и «динамично развивающейся компании».</p></details><span class="card__note">Отдаю: тексты всех блоков</span><div class="rule"></div></div>
+        <div class="card rv d2"><span class="code">DEV</span><h3>Вёрстка и скорость</h3><details class="card__more" open><summary>Подробнее</summary><p>Чистый код без конструкторов. Одинаково работает на телефоне, планшете и десктопе, открывается быстро на медленной сети и не разваливается при увеличении шрифта.</p></details><span class="card__note">Отдаю: исходники без сборщиков</span><div class="rule"></div></div>
+        <div class="card rv"><span class="code">MOT</span><h3>Анимации</h3><details class="card__more" open><summary>Подробнее</summary><p>Те самые механики из блока выше. Ставлю их там, где они помогают читать: ведут взгляд, отделяют разделы, подсказывают, что кликается. Там, где мешают, — не ставлю.</p></details><span class="card__note">Отдаю: анимации, которые не мешают читать</span><div class="rule"></div></div>
+        <div class="card rv d1"><span class="code">ANL</span><h3>Формы и аналитика</h3><details class="card__more" open><summary>Подробнее</summary><p>Заявка приходит прямо вам — в мессенджер или почтой, без чужих личных кабинетов и подписок. Аналитика с целями показывает, откуда пришёл человек и на каком блоке ушёл.</p></details><span class="card__note">Отдаю: цели, события, доступы</span><div class="rule"></div></div>
+        <div class="card rv d2"><span class="code">OPS</span><h3>Запуск</h3><details class="card__more" open><summary>Подробнее</summary><p>Выкладываю на вашу площадку, подключаю SSL, проверяю на живых устройствах. Отдаю исходники и короткую инструкцию, как править тексты самому, без меня и без вёрстки.</p></details><span class="card__note">Отдаю: рабочую страницу и доступы</span><div class="rule"></div></div>
       </div>
 
       <div class="mid-cta rv d1">
@@ -1583,9 +1693,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
         <div class="compose">
           <h3>Соберите сообщение</h3>
           <p>Заполните три поля — подготовлю текст, который останется только отправить.</p>
-          <div class="compose__row"><label for="fProduct">Продукт</label><div class="compose__field"><input id="fProduct" type="text" placeholder="ссылка на сайт или пара слов о продукте" autocomplete="off"></div></div>
-          <div class="compose__row"><label for="fWho">Кому продаёте</label><div class="compose__field"><input id="fWho" type="text" placeholder="например: владельцам небольших складов" autocomplete="off"></div></div>
-          <div class="compose__row"><label for="fWhen">Желаемый срок</label><div class="compose__field"><input id="fWhen" type="text" placeholder="например: к середине сентября" autocomplete="off"></div></div>
+          <div class="compose__row"><label for="fProduct">Продукт</label><div class="compose__field"><input id="fProduct" type="text" placeholder="ссылка на сайт или пара слов о продукте" data-ph-short="ссылка или пара слов" autocomplete="off"></div></div>
+          <div class="compose__row"><label for="fWho">Кому продаёте</label><div class="compose__field"><input id="fWho" type="text" placeholder="например: владельцам небольших складов" data-ph-short="владельцам складов" autocomplete="off"></div></div>
+          <div class="compose__row"><label for="fWhen">Желаемый срок</label><div class="compose__field"><input id="fWhen" type="text" placeholder="например: к середине сентября" data-ph-short="к середине сентября" autocomplete="off"></div></div>
           <div class="compose__out">
             <pre id="composeOut"></pre>
             <div class="compose__go">
@@ -2249,6 +2359,55 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
 })();
 </script>
 
+<script>
+/* «Что входит» на телефоне: описание карточки свёрнуто.
+   Разметка приходит с `open`, поэтому без скрипта и на десктопе всё
+   раскрыто — сворачиваем только там, где экран узкий. Слушаем смену
+   раскладки: поворот телефона не должен оставлять половину карточек
+   свёрнутыми, а половину нет. */
+(function(){
+  var mq = window.matchMedia('(max-width:600px)');
+  var items = [].slice.call(document.querySelectorAll('.card__more'));
+  if(!items.length) return;
+  function apply(){
+    items.forEach(function(d){
+      /* руками раскрытую карточку не трогаем: человек её открыл сам */
+      if(d.dataset.touched === '1') return;
+      d.open = !mq.matches;
+    });
+  }
+  items.forEach(function(d){
+    d.addEventListener('toggle', function(){
+      if(mq.matches) d.dataset.touched = '1';
+    });
+  });
+  apply();
+  if(mq.addEventListener) mq.addEventListener('change', apply);
+  else if(mq.addListener) mq.addListener(apply);
+})();
+</script>
+
+<script>
+/* Подсказки полей под узкий экран. Длинные варианты писались под десктопное
+   поле и на 390 px обрезались посреди слова — это читается как поломка.
+   Короткий вариант лежит в data-ph-short; при повороте телефона длинный
+   возвращается. Без скрипта остаются исходные подсказки. */
+(function(){
+  var mq = window.matchMedia('(max-width:620px)');
+  var fields = [].slice.call(document.querySelectorAll('.compose input[data-ph-short]'));
+  if(!fields.length) return;
+  fields.forEach(function(el){ el.dataset.phLong = el.placeholder; });
+  function apply(){
+    fields.forEach(function(el){
+      el.placeholder = mq.matches ? el.dataset.phShort : el.dataset.phLong;
+    });
+  }
+  apply();
+  if(mq.addEventListener) mq.addEventListener('change', apply);
+  else if(mq.addListener) mq.addListener(apply);
+})();
+</script>
+
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"ProfessionalService","name":"Новиков Артём — лендинги под ключ","description":"Лендинг под ключ: дизайн, тексты, вёрстка, формы, аналитика, публикация. Одна услуга, цена от 15 000 ₽.","areaServed":"RU","availableLanguage":"ru","telephone":"+7 961 446-34-48","priceRange":"от 15000 ₽","founder":{"@type":"Person","name":"Новиков Артём","jobTitle":"Дизайнер и разработчик лендингов"},"sameAs":["https://t.me/NovikovCore"],"makesOffer":{"@type":"Offer","name":"Лендинг под ключ","priceCurrency":"RUB","priceSpecification":{"@type":"PriceSpecification","minPrice":"15000","priceCurrency":"RUB"}}}
 </script>
@@ -2832,22 +2991,66 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   var test = document.createElement('canvas');
   if(!(test.getContext('webgl2') || test.getContext('webgl'))) return;
   var done = false;
+  /* Файлы сцены грузятся очередью, а не параллельно: бандл приезжает
+     первым и разбирается, пока идёт модель. Preload их вместе пробовали
+     24 августа — на 4G стало на 5-11 с хуже, потому что бандл делил полосу
+     и его тяжёлый парсинг начинался позже. Подробности в PROJECT-STATE. */
   function load(){
     if(done) return; done = true;
     var s = document.createElement('script');
-    s.src = 'novikov-gl.js?v=3274fbcc'; s.async = true;
+    s.src = 'novikov-gl.js?v=d0a2e28b'; s.async = true;
     document.head.appendChild(s);
   }
-  /* Раздел 03 близко к первому экрану, ждать до последнего нельзя: берём
-     запас в полтора экрана, чтобы сцена успела собраться до подхода. */
-  if('IntersectionObserver' in window){
-    var io = new IntersectionObserver(function(es){
-      if(es[0].isIntersecting){ io.disconnect(); load(); }
-    }, {rootMargin: '1400px 0px'});
-    io.observe(proof);
+  /* Телефон: грубый указатель или узкий экран. Там мегабайт бандла стоит
+     мобильного трафика, и платить за него должен только тот, кто читает. */
+  var coarse = window.matchMedia('(pointer: coarse)').matches
+            || window.matchMedia('(max-width: 760px)').matches;
+  var conn = navigator.connection || {};
+  var thrifty = !!conn.saveData;
+  /* Разбор — второй раздел, он начинается примерно через экран. Прежний
+     запас в 1400 px накрывал его ещё при нулевой прокрутке, и ленивость
+     превращалась в обычную загрузку. На телефоне запас меньше. */
+  var margin = thrifty ? 300 : (coarse ? 900 : 1400);
+  /* Наблюдатель пересечения здесь не годится: ScrollSmoother держит
+     содержимое в `#smooth-wrapper` с `overflow:hidden`, а `rootMargin`
+     расширяет только root и не отменяет клип предка. Всё, что ниже кромки
+     обёртки, наблюдатель считает отрезанным, и запас не работает. Меряем
+     расстояние сами — та же арифметика, без чужих оговорок. */
+  var events = ['scroll','wheel','touchmove','resize'];
+  function near(){
+    if(done) return;
+    var r = proof.getBoundingClientRect();
+    if(r.top - window.innerHeight < margin){ unwatch(); load(); }
   }
-  /* Страховка и обычный путь: как только поток освободился после первой
-     отрисовки. `requestIdleCallback` есть не везде — тогда просто таймер. */
+  function unwatch(){
+    events.forEach(function(ev){ removeEventListener(ev, near); });
+  }
+  function watch(){
+    if(done) return;
+    events.forEach(function(ev){ addEventListener(ev, near, {passive:true}); });
+    near();
+  }
+  if(coarse){
+    /* Ждём признак чтения: прокрутку, касание или клавишу. Кто ушёл с
+       первого экрана, за сцену не платит. */
+    var armed = false;
+    function arm(){
+      if(armed) return; armed = true;
+      ['scroll','touchstart','keydown','wheel'].forEach(function(ev){
+        removeEventListener(ev, arm, {passive:true});
+      });
+      watch();
+    }
+    ['scroll','touchstart','keydown','wheel'].forEach(function(ev){
+      addEventListener(ev, arm, {passive:true});
+    });
+    /* Если страницу открыли уже прокрученной — по якорю или возвратом. */
+    if(window.scrollY > 0) arm();
+    return;
+  }
+  watch();
+  /* Десктоп: страховка и обычный путь — как только поток освободился после
+     первой отрисовки. `requestIdleCallback` есть не везде — тогда таймер. */
   var idle = window.requestIdleCallback || function(fn){ return setTimeout(fn, 1200); };
   addEventListener('load', function(){ idle(load, {timeout: 2500}); });
 })();</script>

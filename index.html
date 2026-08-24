@@ -21,12 +21,21 @@
 <meta name="twitter:card" content="summary_large_image" />
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070B14'/%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='%23E9F1F7' stroke-width='2'/%3E%3Crect x='12' y='12' width='8' height='8' fill='%23F2775A'/%3E%3C/svg%3E" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600&family=JetBrains+Mono:wght@500&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
+<!-- Шрифты свои, нарезанные по знакам страницы: 78 КБ пятью файлами вместо
+     блокирующей таблицы на чужом домене. Предзагружаем три начертания, которые
+     нужны первому экрану: заголовок, текст, технические подписи. Остальные два
+     подтянутся по мере встречи. Пересобрать — scripts/fetch_fonts.py. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/unbounded-700.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/golos-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/jbmono-500.woff2">
 
 <style>
+@font-face{font-family:'Golos Text';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/golos-400.woff2') format('woff2')}
+@font-face{font-family:'Golos Text';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/golos-600.woff2') format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/jbmono-500.woff2') format('woff2')}
+@font-face{font-family:'Unbounded';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/unbounded-600.woff2') format('woff2')}
+@font-face{font-family:'Unbounded';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/unbounded-700.woff2') format('woff2')}
+
 /* ============================================================
    СПЕЦИФИКАЦИЯ — Новиков Артём
    Бумага, графит, чертёжный синий, карандаш разметки.
@@ -117,7 +126,10 @@ header.nav.scrolled{background:rgba(231,230,225,.88);background:color-mix(in srg
 header.nav.dark{color:var(--graphite)}
 header.nav.dark.scrolled{background:rgba(7,11,20,.82);background:color-mix(in srgb,var(--deep) 84%,transparent);border-color:var(--line-2)}
 .nav__in{display:flex;align-items:center;justify-content:space-between;gap:20px;height:68px;grid-column:1/-1}
+/* Отступ внутрь, отрицательный отступ наружу: цель нажатия становится
+   44 px по высоте, а картинка не сдвигается ни на пиксель. */
 .brand{display:flex;align-items:baseline;gap:10px;font-family:var(--display);font-weight:700;font-size:1rem;letter-spacing:.02em}
+a.brand{padding:11px 6px;margin:-11px -6px}
 .brand em{font-family:var(--mono);font-style:normal;font-weight:500;font-size:.62rem;letter-spacing:.14em;color:var(--slate);text-transform:uppercase}
 header.nav.dark .brand em{color:var(--slate-2)}
 .nav__side{display:flex;align-items:center;gap:14px}
@@ -288,11 +300,6 @@ html:not(.js) .hero__offer u::after{transform:none}
   .xpl__list{position:absolute;right:0;top:50%;transform:translateY(-50%);width:min(36%,360px);z-index:3}
 }
 @media (max-width:1000px){
-  .xpl__list{margin-top:14px;min-height:96px}
-  .xpl__item{padding:8px 0 8px 18px;border-top:0;display:none}
-  .xpl__item:last-child{border-bottom:0}
-  .xpl__item.on{display:block}
-  .xpl.static .xpl__item{display:block;border-top:1px solid var(--line)}
   .xpl__item h3{font-size:.98rem}
   .xpl__item p{font-size:.86rem}
 }
@@ -412,6 +419,29 @@ html:not(.js) .xpl__item p,.xpl.static .xpl__item p{max-height:none;opacity:1;ma
 .xpl__item.on .n{color:var(--pencil)}
 @media (max-width:1000px){ .xpl__item p{max-width:none} }
 
+/* На телефоне видна одна подпись слоя за раз. Пока они шли потоком, смена
+   подписи меняла высоту списка и двигала весь раздел — сдвиг вёрстки прямо
+   под пальцем. Кладём все шесть в одну ячейку сетки: высоту держит самая
+   длинная, смена больше ничего не двигает.
+   Блок обязан стоять ПОСЛЕ базовых `.xpl__item`: медиазапрос специфичности
+   не добавляет, и правило, записанное выше, проигрывает одноимённому ниже. */
+@media (max-width:1000px){
+  .xpl__list{margin-top:14px;display:grid;grid-template-areas:'note';align-items:start}
+  .xpl__item{grid-area:note;padding:8px 0 8px 18px;border-top:0;border-bottom:0;
+    opacity:0;visibility:hidden;pointer-events:none}
+  .xpl__item.on{opacity:1;visibility:visible}
+  .xpl__item.off{opacity:0}
+  /* Текст подписи открыт всегда: гармошка `max-height` двигала закреплённый
+     раздел на 72 px при первой активации. Прятать нечего — на этом экране
+     видна ровно одна подпись. Специфичность на класс выше базового правила
+     `.xpl__item.on p`, иначе оно перебьёт. */
+  .xpl__list .xpl__item p{max-height:none;opacity:1;margin-top:6px}
+  /* Без WebGL показываются все подписи подряд — там снова обычный поток. */
+  .xpl.static .xpl__list{display:flex}
+  .xpl.static .xpl__item{position:relative;opacity:1;visibility:visible;
+    border-top:1px solid var(--line)}
+}
+
 /* ============================================================
    04 ЛАБОРАТОРИЯ МЕХАНИК
    ============================================================ */
@@ -436,6 +466,17 @@ html:not(.js) .xpl__item p,.xpl.static .xpl__item p{max-height:none;opacity:1;ma
 .lab__hint{position:absolute;right:12px;top:12px;font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;
   text-transform:uppercase;color:var(--slate);opacity:0;transition:opacity .3s}
 .lab__tile:hover .lab__hint,.lab__tile:focus-visible .lab__hint{opacity:.9}
+
+/* ритм плиток на телефоне: в одной колонке высоту сцены задаёт содержимое,
+   а не сетка. Общая высота ряда нужна только там, где ряд есть, — иначе шесть
+   одинаковых тактов подряд читаются списком и съедают экран прокрутки.
+   Блок стоит после базовых правил, а не рядом с `grid-template-columns`
+   выше: специфичность у медиазапроса та же, и правило из него проигрывает
+   любому одноимённому правилу, записанному ниже по файлу. */
+@media (max-width:640px){
+  .lab__tile{min-height:0}
+  .lab__stage{min-height:96px;padding:22px 20px}
+}
 
 .d-type{display:block;font-family:var(--display);font-weight:700;font-size:clamp(1.2rem,2.2vw,1.8rem);letter-spacing:-.03em;line-height:1.08}
 .d-type .l{display:block;overflow:hidden}
@@ -627,6 +668,8 @@ footer{background:rgba(10,17,32,.94);color:var(--slate-2);padding:34px 0 40px}
 footer .brand{color:var(--graphite)}
 footer .mono{color:var(--slate-2)}
 footer a.mono{border-bottom:1px solid var(--line-2);padding-bottom:2px;transition:color .25s,border-color .25s}
+/* Та же история в подвале: строка в 21 px — не цель нажатия, а испытание. */
+footer a.mono{display:inline-block;padding:11px 0 13px;margin:-11px 0 -13px}
 footer a.mono:hover{color:var(--graphite);border-color:var(--graphite)}
 
 /* --- космос: небо и планеты --- */
@@ -1597,11 +1640,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   <a class="btn btn--ghost" href="#price"><span>Цена</span></a>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollSmoother.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Flip.min.js" defer></script>
+<!-- GSAP 3.13.0 и четыре плагина одним файлом со своего домена.
+     Штамп версии подставляет сборка. Пересобрать — scripts/build_vendor.py. -->
+<script src="vendor-gsap.js?v=022b985a" defer></script>
 
 <script>
 (function(){
@@ -1756,9 +1797,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       /* [элемент, множитель параллакса, базовая непрозрачность, габарит,
          якорь, доля экрана] — планета встаёт в кадр, когда её секция вверху. */
       planets = [
-        [document.getElementById('planetA'), 0.16, 1, null, '#lab',   0.62],
-        [document.getElementById('planetB'), 0.30, 1, null, '#price', 0.16],
-        [document.getElementById('planetC'), 0.10, 1, null, '#faq',   0.10]
+        [document.getElementById('planetA'), 0.16, 1, null, '#lab',   0.62, 0],
+        [document.getElementById('planetB'), 0.30, 1, null, '#price', 0.16, 0],
+        [document.getElementById('planetC'), 0.10, 1, null, '#faq',   0.10, 0]
       ];
 
   /* Базовую непрозрачность держит CSS — там же живут медиазапросы. JS пишет
@@ -1787,7 +1828,11 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     var sec = document.querySelector(m[4]);
     if(!sec) return;
     var top = sec.getBoundingClientRect().top + scrollPos();
-    m[0].style.top = Math.round(m[5] * window.innerHeight + m[1] * top) + 'px';
+    /* Якорь не пишем в `top`: его пересчитывают трижды (загрузка, +700 мс,
+       каждый refresh ScrollTrigger), и каждая запись — сдвиг вёрстки на
+       треть допустимого бюджета. Держим числом и складываем с параллаксом
+       в один трансформ. */
+    m[6] = Math.round(m[5] * window.innerHeight + m[1] * top);
   }
 
   function readBaseOps(){
@@ -1800,7 +1845,8 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       el.style.opacity = '';
       planets[i][2] = parseFloat(getComputedStyle(el).opacity) || 1;
       el.style.opacity = prev;
-      planets[i][3] = {h: el.offsetHeight || 1, top: el.offsetTop};
+      /* Верх слоя теперь всегда 0: место планете даёт трансформ. */
+      planets[i][3] = {h: el.offsetHeight || 1, top: 0};
     }
   }
   readBaseOps();
@@ -1836,9 +1882,9 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     for(var i=0;i<planets.length;i++){
       var m = planets[i];
       if(!m[0]) continue;
-      var y = -st * m[1];
+      var y = m[6] - st * m[1];
       m[0].style.transform = 'translate3d(0,' + y + 'px,0)';
-      m[0].style.opacity = (m[2] * skyDim * planetFade(m[3], m[3].top + y, vh)).toFixed(3);
+      m[0].style.opacity = (m[2] * skyDim * planetFade(m[3], y, vh)).toFixed(3);
     }
   }
 
@@ -1942,7 +1988,12 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     var smoother = null;
     if(window.ScrollSmoother && fine){
       gsap.registerPlugin(ScrollSmoother);
-      smoother = ScrollSmoother.create({wrapper:'#smooth-wrapper', content:'#smooth-content', smooth:1.1, effects:true});
+      /* normalizeScroll: колесо и палец идут через тот же счётчик, что и смузер.
+         Без этого момент закрепления раздела 03 приходился на рассинхрон между
+         трансформом содержимого и нативной прокруткой — страница прыгала на
+         228 px. ignoreMobileResize убирает пересчёт от адресной строки. */
+      smoother = ScrollSmoother.create({wrapper:'#smooth-wrapper', content:'#smooth-content',
+        smooth:1.1, effects:true, normalizeScroll:true, ignoreMobileResize:true});
     }
 
     /* ScrollSmoother перехватывает прокрутку — нативные якоря перестают работать */
@@ -1973,7 +2024,13 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
     }
 
     /* ---------- имя: буквы выходят из-под маски ---------- */
-    if(!heroShown && window.SplitText){
+    /* Нарезка ждёт шрифт: SplitText считает строки и маски по текущим
+       метрикам, и по подменному шрифту буквы выезжают обрезанными. Ждём не
+       дольше запасного таймера на 750 мс — не дождались, поднимаем заголовок
+       обычной CSS-анимацией. */
+    function heroSplit(){
+      if(heroShown) return;
+      if(!window.SplitText){ heroCss(); return; }
       clearTimeout(heroTimer);
       heroShown = true;
       gsap.registerPlugin(SplitText);
@@ -1984,8 +2041,11 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
       gsap.from(split.chars, {
         yPercent:118, duration:1, ease:'power4.out', stagger:{each:.03, from:'start'}
       });
+    }
+    if(document.fonts && document.fonts.status !== 'loaded'){
+      document.fonts.ready.then(heroSplit);
     } else {
-      heroCss();
+      heroSplit();
     }
 
     /* имя на скролле: трекинг раскрывается, экран мягко уходит */
@@ -2773,7 +2833,34 @@ h2 .shline span, h2 .shline em, h2 .shline b, h2 .shline u{
   });
 })();
 </script>
-<script defer src="novikov-gl.js?v=058103ed"></script>
+<script>
+(function(){
+  var proof = document.getElementById('proof');
+  if(!proof) return;
+  /* При выключенной анимации сцена всё равно не стартует — не тратим сеть. */
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var test = document.createElement('canvas');
+  if(!(test.getContext('webgl2') || test.getContext('webgl'))) return;
+  var done = false;
+  function load(){
+    if(done) return; done = true;
+    var s = document.createElement('script');
+    s.src = 'novikov-gl.js?v=3274fbcc'; s.async = true;
+    document.head.appendChild(s);
+  }
+  /* Раздел 03 близко к первому экрану, ждать до последнего нельзя: берём
+     запас в полтора экрана, чтобы сцена успела собраться до подхода. */
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(es){
+      if(es[0].isIntersecting){ io.disconnect(); load(); }
+    }, {rootMargin: '1400px 0px'});
+    io.observe(proof);
+  }
+  /* Страховка и обычный путь: как только поток освободился после первой
+     отрисовки. `requestIdleCallback` есть не везде — тогда просто таймер. */
+  var idle = window.requestIdleCallback || function(fn){ return setTimeout(fn, 1200); };
+  addEventListener('load', function(){ idle(load, {timeout: 2500}); });
+})();</script>
 
 </body>
 </html>
